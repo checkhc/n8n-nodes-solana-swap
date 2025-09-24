@@ -1,9 +1,8 @@
 {
-  "name": "n8n-nodes-solana",
+  "name": "n8n-nodes-solana-swap",
   "version": "1.2.1",
-  "description": "n8n node for Solana blockchain operations",
+  "description": "n8n node for Solana blockchain operations with Jupiter swap integration",
   "keywords": [
-    "n8n-community-node-package",
     "solana",
     "blockchain",
     "crypto",
