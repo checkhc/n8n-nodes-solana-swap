@@ -1,0 +1,756 @@
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
+} from 'n8n-workflow';
+
+import * as bs58 from 'bs58';
+import * as nacl from 'tweetnacl';
+import axios from 'axios';
+import { Transaction, VersionedTransaction, Keypair } from '@solana/web3.js';
+
+const LAMPORTS_PER_SOL = 1000000000;
+
+// Helper functions for Solana RPC calls
+class SolanaRPC {
+	private rpcUrl: string;
+
+	constructor(rpcUrl: string) {
+		this.rpcUrl = rpcUrl;
+	}
+
+	async call(method: string, params: any[] = []): Promise<any> {
+		const response = await axios.post(this.rpcUrl, {
+			jsonrpc: '2.0',
+			id: 1,
+			method,
+			params,
+		}, {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (response.data.error) {
+			throw new Error(`RPC Error: ${response.data.error.message}`);
+		}
+
+		return response.data.result;
+	}
+
+	async getBalance(publicKey: string): Promise<number> {
+		const result = await this.call('getBalance', [publicKey]);
+		return result.value;
+	}
+
+	async getTokenAccountsByOwner(owner: string, mint: string): Promise<any> {
+		const result = await this.call('getTokenAccountsByOwner', [
+			owner,
+			{ mint },
+			{ encoding: 'jsonParsed' },
+		]);
+		return result.value;
+	}
+
+	async getSignaturesForAddress(address: string, limit: number = 10): Promise<any[]> {
+		const result = await this.call('getSignaturesForAddress', [
+			address,
+			{ limit },
+		]);
+		return result;
+	}
+
+	async getTransaction(signature: string): Promise<any> {
+		const result = await this.call('getTransaction', [
+			signature,
+			{ encoding: 'jsonParsed' },
+		]);
+		return result;
+	}
+
+	// Jupiter API methods
+	async getJupiterQuote(inputMint: string, outputMint: string, amount: number, slippageBps: number = 50): Promise<any> {
+		const jupiterUrl = 'https://quote-api.jup.ag/v6/quote';
+		const params = new URLSearchParams({
+			inputMint,
+			outputMint,
+			amount: amount.toString(),
+			slippageBps: slippageBps.toString(),
+		});
+
+		const response = await axios.get(`${jupiterUrl}?${params}`);
+		
+		if (response.data.error) {
+			throw new Error(`Jupiter Error: ${response.data.error}`);
+		}
+
+		return response.data;
+	}
+
+	async getJupiterSwapTransaction(quoteResponse: any, userPublicKey: string, priorityFee: number = 0): Promise<any> {
+		const jupiterUrl = 'https://quote-api.jup.ag/v6/swap';
+		
+		const swapRequest = {
+			quoteResponse,
+			userPublicKey,
+			wrapAndUnwrapSol: true,
+			priorityLevelWithMaxLamports: priorityFee > 0 ? {
+				priorityLevel: 'high',
+				maxLamports: priorityFee,
+			} : undefined,
+		};
+
+		const response = await axios.post(jupiterUrl, swapRequest, {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (response.data.error) {
+			throw new Error(`Jupiter Swap Error: ${response.data.error}`);
+		}
+
+		return response.data;
+	}
+
+	async sendTransaction(serializedTransaction: string): Promise<string> {
+		const result = await this.call('sendTransaction', [
+			serializedTransaction,
+			{
+				encoding: 'base64',
+				skipPreflight: false,
+				preflightCommitment: 'confirmed',
+			},
+		]);
+		return result;
+	}
+}
+
+export class SolanaNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Solana',
+		name: 'solanaNode',
+		icon: 'file:solana.svg',
+		group: ['transform'],
+		version: 1,
+		subtitle: '={{$parameter["operation"]}}',
+		description: 'Interact with Solana blockchain',
+		defaults: {
+			name: 'Solana',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'solanaApi',
+				required: true,
+			},
+		],
+		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Get Balance',
+						value: 'getBalance',
+						description: 'Get SOL balance of a wallet',
+						action: 'Get the SOL balance of a wallet',
+					},
+					{
+						name: 'Get Token Balance',
+						value: 'getTokenBalance',
+						description: 'Get balance of a specific SPL token',
+						action: 'Get the balance of a specific SPL token',
+					},
+					{
+						name: 'Get Token Price',
+						value: 'getTokenPrice',
+						description: 'Get current price of a token',
+						action: 'Get current price of a token',
+					},
+					{
+						name: 'Get Transaction History',
+						value: 'getTransactionHistory',
+						description: 'Get transaction history for a wallet',
+						action: 'Get transaction history for a wallet',
+					},
+					{
+						name: 'Get Account Info',
+						value: 'getAccountInfo',
+						description: 'Get account information',
+						action: 'Get account information',
+					},
+					{
+						name: 'Get Swap Quote',
+						value: 'getSwapQuote',
+						description: 'Get quote for token swap via Jupiter',
+						action: 'Get quote for token swap via Jupiter',
+					},
+					{
+						name: 'Execute Swap',
+						value: 'executeSwap',
+						description: 'Prepare token swap transaction via Jupiter',
+						action: 'Prepare token swap transaction via Jupiter',
+					},
+					{
+						name: 'Execute Swap (Advanced)',
+						value: 'executeSwapAdvanced',
+						description: 'Execute token swap with proper transaction signing',
+						action: 'Execute token swap with proper transaction signing',
+					},
+				],
+				default: 'getBalance',
+			},
+
+			// Get Balance parameters
+			{
+				displayName: 'Wallet Address',
+				name: 'walletAddress',
+				type: 'string',
+				default: '',
+				placeholder: 'Enter wallet address or leave empty to use credential wallet',
+				displayOptions: {
+					show: {
+						operation: ['getBalance', 'getAccountInfo'],
+					},
+				},
+				description: 'Wallet address to check balance for (leave empty to use credential wallet)',
+			},
+
+			// Get Token Balance parameters
+			{
+				displayName: 'Wallet Address',
+				name: 'walletAddress',
+				type: 'string',
+				default: '',
+				placeholder: 'Enter wallet address or leave empty to use credential wallet',
+				displayOptions: {
+					show: {
+						operation: ['getTokenBalance'],
+					},
+				},
+				description: 'Wallet address to check token balance for',
+			},
+			{
+				displayName: 'Token Mint Address',
+				name: 'tokenMint',
+				type: 'string',
+				default: '',
+				placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+				displayOptions: {
+					show: {
+						operation: ['getTokenBalance'],
+					},
+				},
+				description: 'Token mint address (e.g., USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)',
+			},
+
+			// Get Token Price parameters
+			{
+				displayName: 'Token Symbol',
+				name: 'tokenSymbol',
+				type: 'string',
+				default: 'SOL',
+				displayOptions: {
+					show: {
+						operation: ['getTokenPrice'],
+					},
+				},
+				description: 'Token symbol (e.g., SOL, USDC)',
+			},
+
+			// Get Transaction History parameters
+			{
+				displayName: 'Wallet Address',
+				name: 'walletAddress',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['getTransactionHistory'],
+					},
+				},
+				description: 'Wallet address to get transaction history for',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 10,
+				displayOptions: {
+					show: {
+						operation: ['getTransactionHistory'],
+					},
+				},
+				description: 'Number of transactions to retrieve',
+			},
+
+			// Get Swap Quote parameters
+			{
+				displayName: 'Input Token Mint',
+				name: 'inputMint',
+				type: 'string',
+				required: true,
+				default: 'So11111111111111111111111111111111111111112',
+				placeholder: 'So11111111111111111111111111111111111111112',
+				displayOptions: {
+					show: {
+						operation: ['getSwapQuote', 'executeSwap', 'executeSwapAdvanced'],
+					},
+				},
+				description: 'Input token mint address (SOL: So11111111111111111111111111111111111111112)',
+			},
+			{
+				displayName: 'Output Token Mint',
+				name: 'outputMint',
+				type: 'string',
+				required: true,
+				default: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+				placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+				displayOptions: {
+					show: {
+						operation: ['getSwapQuote', 'executeSwap', 'executeSwapAdvanced'],
+					},
+				},
+				description: 'Output token mint address (USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)',
+			},
+			{
+				displayName: 'Amount',
+				name: 'swapAmount',
+				type: 'number',
+				required: true,
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: ['getSwapQuote', 'executeSwap', 'executeSwapAdvanced'],
+					},
+				},
+				description: 'Amount to swap (in input token units)',
+			},
+			{
+				displayName: 'Slippage (%)',
+				name: 'slippageBps',
+				type: 'number',
+				default: 50,
+				displayOptions: {
+					show: {
+						operation: ['getSwapQuote', 'executeSwap', 'executeSwapAdvanced'],
+					},
+				},
+				description: 'Maximum slippage in basis points (50 = 0.5%)',
+			},
+			{
+				displayName: 'Priority Fee (Lamports)',
+				name: 'priorityFee',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: ['executeSwap', 'executeSwapAdvanced'],
+					},
+				},
+				description: 'Priority fee in lamports for faster execution (optional)',
+			},
+		],
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const credentials = await this.getCredentials('solanaApi', i);
+				const operation = this.getNodeParameter('operation', i) as string;
+
+				// Setup RPC connection
+				let rpcUrl: string;
+				if (credentials.rpcType === 'custom') {
+					rpcUrl = credentials.customRpcUrl as string;
+				} else {
+					const network = credentials.network as string;
+					switch (network) {
+						case 'mainnet-beta':
+							rpcUrl = 'https://api.mainnet-beta.solana.com';
+							break;
+						case 'devnet':
+							rpcUrl = 'https://api.devnet.solana.com';
+							break;
+						case 'testnet':
+							rpcUrl = 'https://api.testnet.solana.com';
+							break;
+						default:
+							rpcUrl = 'https://api.devnet.solana.com';
+					}
+				}
+
+				const rpc = new SolanaRPC(rpcUrl);
+
+				// Get wallet address
+				let walletAddress: string;
+				if (credentials.publicKey) {
+					walletAddress = credentials.publicKey as string;
+				} else {
+					throw new NodeOperationError(this.getNode(), 'Public key must be provided in credentials');
+				}
+
+				let result: any = {};
+
+				switch (operation) {
+					case 'getBalance':
+						const balanceWallet = this.getNodeParameter('walletAddress', i) as string || walletAddress;
+						const balance = await rpc.getBalance(balanceWallet);
+						result = {
+							walletAddress: balanceWallet,
+							balance: balance / LAMPORTS_PER_SOL,
+							balanceLamports: balance,
+						};
+						break;
+
+					case 'getTokenBalance':
+						const tokenWallet = this.getNodeParameter('walletAddress', i) as string || walletAddress;
+						const tokenMint = this.getNodeParameter('tokenMint', i) as string;
+						
+						try {
+							const tokenAccounts = await rpc.getTokenAccountsByOwner(tokenWallet, tokenMint);
+							
+							if (tokenAccounts.length > 0) {
+								const tokenAccount = tokenAccounts[0];
+								const balance = tokenAccount.account.data.parsed.info.tokenAmount;
+								
+								result = {
+									walletAddress: tokenWallet,
+									tokenMint: tokenMint,
+									balance: parseFloat(balance.uiAmountString || '0'),
+									balanceRaw: balance.amount,
+									decimals: balance.decimals,
+								};
+							} else {
+								result = {
+									walletAddress: tokenWallet,
+									tokenMint: tokenMint,
+									balance: 0,
+									balanceRaw: '0',
+									error: 'Token account not found',
+								};
+							}
+						} catch (error) {
+							result = {
+								walletAddress: tokenWallet,
+								tokenMint: tokenMint,
+								balance: 0,
+								balanceRaw: '0',
+								error: error.message,
+							};
+						}
+						break;
+
+					case 'getTokenPrice':
+						const tokenSymbol = this.getNodeParameter('tokenSymbol', i) as string;
+						
+						try {
+							// Using CoinGecko API for price data
+							const priceResponse = await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenSymbol.toLowerCase()}&vs_currencies=usd`);
+							const price = priceResponse.data[tokenSymbol.toLowerCase()]?.usd;
+							
+							result = {
+								symbol: tokenSymbol,
+								price: price || 0,
+								currency: 'USD',
+								timestamp: new Date().toISOString(),
+							};
+						} catch (error) {
+							result = {
+								symbol: tokenSymbol,
+								price: 0,
+								currency: 'USD',
+								error: 'Failed to fetch price data',
+								timestamp: new Date().toISOString(),
+							};
+						}
+						break;
+
+					case 'getTransactionHistory':
+						const historyWallet = this.getNodeParameter('walletAddress', i) as string || walletAddress;
+						const limit = this.getNodeParameter('limit', i) as number;
+						
+						try {
+							const signatures = await rpc.getSignaturesForAddress(historyWallet, limit);
+							
+							const transactions = [];
+							for (const sig of signatures) {
+								const tx = await rpc.getTransaction(sig.signature);
+								if (tx) {
+									transactions.push({
+										signature: sig.signature,
+										slot: sig.slot,
+										blockTime: sig.blockTime,
+										confirmationStatus: sig.confirmationStatus,
+										fee: tx.meta?.fee,
+										success: tx.meta?.err === null,
+									});
+								}
+							}
+							
+							result = {
+								walletAddress: historyWallet,
+								transactions,
+								count: transactions.length,
+							};
+						} catch (error) {
+							result = {
+								walletAddress: historyWallet,
+								transactions: [],
+								count: 0,
+								error: error.message,
+							};
+						}
+						break;
+
+					case 'getAccountInfo':
+						const accountWallet = this.getNodeParameter('walletAddress', i) as string || walletAddress;
+						
+						try {
+							const accountInfo = await rpc.call('getAccountInfo', [
+								accountWallet,
+								{ encoding: 'jsonParsed' },
+							]);
+							
+							result = {
+								walletAddress: accountWallet,
+								accountInfo: accountInfo.value,
+								exists: accountInfo.value !== null,
+							};
+						} catch (error) {
+							result = {
+								walletAddress: accountWallet,
+								accountInfo: null,
+								exists: false,
+								error: error.message,
+							};
+						}
+						break;
+
+					case 'getSwapQuote':
+						const inputMint = this.getNodeParameter('inputMint', i) as string;
+						const outputMint = this.getNodeParameter('outputMint', i) as string;
+						const swapAmount = this.getNodeParameter('swapAmount', i) as number;
+						const slippageBps = this.getNodeParameter('slippageBps', i) as number;
+
+						try {
+							// Convert amount to proper decimals (assuming input token decimals)
+							let amountInSmallestUnit: number;
+							if (inputMint === 'So11111111111111111111111111111111111111112') {
+								// SOL has 9 decimals
+								amountInSmallestUnit = swapAmount * LAMPORTS_PER_SOL;
+							} else {
+								// For other tokens, assume 6 decimals (most common)
+								// In production, you should fetch the mint info to get exact decimals
+								amountInSmallestUnit = swapAmount * 1000000;
+							}
+
+							const quote = await rpc.getJupiterQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
+							
+							result = {
+								inputMint,
+								outputMint,
+								inputAmount: swapAmount,
+								inputAmountRaw: amountInSmallestUnit.toString(),
+								outputAmount: parseFloat(quote.outAmount) / (outputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+								outputAmountRaw: quote.outAmount,
+								priceImpactPct: quote.priceImpactPct,
+								slippageBps: slippageBps,
+								routePlan: quote.routePlan,
+								quote: quote,
+								timestamp: new Date().toISOString(),
+							};
+						} catch (error) {
+							result = {
+								inputMint,
+								outputMint,
+								inputAmount: swapAmount,
+								error: error.message,
+								timestamp: new Date().toISOString(),
+							};
+						}
+						break;
+
+					case 'executeSwap':
+						const execInputMint = this.getNodeParameter('inputMint', i) as string;
+						const execOutputMint = this.getNodeParameter('outputMint', i) as string;
+						const execSwapAmount = this.getNodeParameter('swapAmount', i) as number;
+						const execSlippageBps = this.getNodeParameter('slippageBps', i) as number;
+						const priorityFee = this.getNodeParameter('priorityFee', i) as number;
+
+						try {
+							// Convert amount to proper decimals
+							let execAmountInSmallestUnit: number;
+							if (execInputMint === 'So11111111111111111111111111111111111111112') {
+								execAmountInSmallestUnit = execSwapAmount * LAMPORTS_PER_SOL;
+							} else {
+								execAmountInSmallestUnit = execSwapAmount * 1000000;
+							}
+
+							// Get quote first
+							const execQuote = await rpc.getJupiterQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
+							
+							// Get swap transaction data (but don't execute it automatically)
+							const swapTransaction = await rpc.getJupiterSwapTransaction(execQuote, walletAddress, priorityFee);
+							
+							result = {
+								swapTransaction: swapTransaction.swapTransaction, // Base64 encoded transaction
+								inputMint: execInputMint,
+								outputMint: execOutputMint,
+								inputAmount: execSwapAmount,
+								inputAmountRaw: execAmountInSmallestUnit.toString(),
+								outputAmount: parseFloat(execQuote.outAmount) / (execOutputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+								outputAmountRaw: execQuote.outAmount,
+								priceImpactPct: execQuote.priceImpactPct,
+								slippageBps: execSlippageBps,
+								priorityFee: priorityFee,
+								timestamp: new Date().toISOString(),
+								status: 'transaction_ready',
+								instructions: 'Use the swapTransaction field with your wallet to sign and send the transaction',
+								note: 'For security reasons, transaction signing should be done client-side with your wallet'
+							};
+						} catch (error) {
+							result = {
+								inputMint: execInputMint,
+								outputMint: execOutputMint,
+								inputAmount: execSwapAmount,
+								error: error.message,
+								timestamp: new Date().toISOString(),
+								status: 'failed',
+							};
+						}
+						break;
+
+					case 'executeSwapAdvanced':
+						if (!credentials.privateKey) {
+							throw new NodeOperationError(this.getNode(), 'Private key required for swap execution');
+						}
+
+						const advInputMint = this.getNodeParameter('inputMint', i) as string;
+						const advOutputMint = this.getNodeParameter('outputMint', i) as string;
+						const advSwapAmount = this.getNodeParameter('swapAmount', i) as number;
+						const advSlippageBps = this.getNodeParameter('slippageBps', i) as number;
+						const advPriorityFee = this.getNodeParameter('priorityFee', i) as number;
+
+						try {
+							// Convert amount to proper decimals
+							let advAmountInSmallestUnit: number;
+							if (advInputMint === 'So11111111111111111111111111111111111111112') {
+								advAmountInSmallestUnit = advSwapAmount * LAMPORTS_PER_SOL;
+							} else {
+								advAmountInSmallestUnit = advSwapAmount * 1000000;
+							}
+
+							// Get quote first
+							const advQuote = await rpc.getJupiterQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
+							
+							// Get swap transaction
+							const advSwapTransaction = await rpc.getJupiterSwapTransaction(advQuote, walletAddress, advPriorityFee);
+							
+							// Create keypair from private key
+							const privateKeyBytes = bs58.decode(credentials.privateKey as string);
+							const keypair = Keypair.fromSecretKey(privateKeyBytes);
+							
+							// Deserialize and sign transaction properly
+							const transactionBuffer = Buffer.from(advSwapTransaction.swapTransaction, 'base64');
+							
+							try {
+								// Try as VersionedTransaction first (Jupiter v6 format)
+								const versionedTx = VersionedTransaction.deserialize(transactionBuffer);
+								versionedTx.sign([keypair]);
+								const signedTxBuffer = versionedTx.serialize();
+								const signedTxBase64 = Buffer.from(signedTxBuffer).toString('base64');
+								
+								// Send transaction
+								const txSignature = await rpc.sendTransaction(signedTxBase64);
+								
+								result = {
+									signature: txSignature,
+									inputMint: advInputMint,
+									outputMint: advOutputMint,
+									inputAmount: advSwapAmount,
+									inputAmountRaw: advAmountInSmallestUnit.toString(),
+									outputAmount: parseFloat(advQuote.outAmount) / (advOutputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+									outputAmountRaw: advQuote.outAmount,
+									priceImpactPct: advQuote.priceImpactPct,
+									slippageBps: advSlippageBps,
+									priorityFee: advPriorityFee,
+									timestamp: new Date().toISOString(),
+									status: 'submitted',
+									transactionType: 'versioned'
+								};
+								
+							} catch (versionedError) {
+								// Fallback to legacy Transaction format
+								const legacyTx = Transaction.from(transactionBuffer);
+								legacyTx.sign(keypair);
+								const signedTxBuffer = legacyTx.serialize();
+								const signedTxBase64 = Buffer.from(signedTxBuffer).toString('base64');
+								
+								// Send transaction
+								const txSignature = await rpc.sendTransaction(signedTxBase64);
+								
+								result = {
+									signature: txSignature,
+									inputMint: advInputMint,
+									outputMint: advOutputMint,
+									inputAmount: advSwapAmount,
+									inputAmountRaw: advAmountInSmallestUnit.toString(),
+									outputAmount: parseFloat(advQuote.outAmount) / (advOutputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+									outputAmountRaw: advQuote.outAmount,
+									priceImpactPct: advQuote.priceImpactPct,
+									slippageBps: advSlippageBps,
+									priorityFee: advPriorityFee,
+									timestamp: new Date().toISOString(),
+									status: 'submitted',
+									transactionType: 'legacy'
+								};
+							}
+							
+						} catch (error) {
+							result = {
+								inputMint: advInputMint,
+								outputMint: advOutputMint,
+								inputAmount: advSwapAmount,
+								error: error.message,
+								timestamp: new Date().toISOString(),
+								status: 'failed',
+							};
+						}
+						break;
+
+					default:
+						throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
+				}
+
+				returnData.push({
+					json: result,
+					pairedItem: { item: i },
+				});
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+				throw error;
+			}
+		}
+
+		return [returnData];
+	}
+}
