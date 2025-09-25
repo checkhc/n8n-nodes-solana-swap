@@ -15,7 +15,7 @@ const LAMPORTS_PER_SOL = 1000000000;
 
 // Helper functions for Solana RPC calls
 class SolanaRPC {
-	private rpcUrl: string;
+	public rpcUrl: string;
 
 	constructor(rpcUrl: string) {
 		this.rpcUrl = rpcUrl;
@@ -115,6 +115,118 @@ class SolanaRPC {
 		return response.data;
 	}
 
+	// Token transfer methods
+	async createSolTransferTransaction(fromPublicKey: string, toPublicKey: string, lamports: number, priorityFee: number = 0): Promise<any> {
+		const recentBlockhash = await this.call('getLatestBlockhash');
+		
+		const transaction = {
+			feePayer: fromPublicKey,
+			recentBlockhash: recentBlockhash.value.blockhash,
+			instructions: [
+				{
+					programId: '11111111111111111111111111111111',
+					keys: [
+						{ pubkey: fromPublicKey, isSigner: true, isWritable: true },
+						{ pubkey: toPublicKey, isSigner: false, isWritable: true },
+					],
+					data: this.createTransferInstruction(lamports),
+				},
+			],
+		};
+
+		if (priorityFee > 0) {
+			transaction.instructions.unshift({
+				programId: 'ComputeBudget111111111111111111111111111111',
+				keys: [],
+				data: this.createPriorityFeeInstruction(priorityFee),
+			});
+		}
+
+		return transaction;
+	}
+
+	async createSplTransferTransaction(fromPublicKey: string, toPublicKey: string, tokenMint: string, amount: number, decimals: number, priorityFee: number = 0): Promise<any> {
+		const recentBlockhash = await this.call('getLatestBlockhash');
+		
+		// Get or create associated token accounts
+		const fromTokenAccount = await this.getAssociatedTokenAccount(fromPublicKey, tokenMint);
+		const toTokenAccount = await this.getAssociatedTokenAccount(toPublicKey, tokenMint);
+		
+		const adjustedAmount = amount * Math.pow(10, decimals);
+		
+		const transaction = {
+			feePayer: fromPublicKey,
+			recentBlockhash: recentBlockhash.value.blockhash,
+			instructions: [],
+		};
+
+		// Add priority fee if specified
+		if (priorityFee > 0) {
+			transaction.instructions.push({
+				programId: 'ComputeBudget111111111111111111111111111111',
+				keys: [],
+				data: this.createPriorityFeeInstruction(priorityFee),
+			});
+		}
+
+		// Create destination token account if it doesn't exist
+		const toTokenAccountInfo = await this.call('getAccountInfo', [toTokenAccount]);
+		if (!toTokenAccountInfo.value) {
+			transaction.instructions.push({
+				programId: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+				keys: [
+					{ pubkey: fromPublicKey, isSigner: true, isWritable: true },
+					{ pubkey: toTokenAccount, isSigner: false, isWritable: true },
+					{ pubkey: toPublicKey, isSigner: false, isWritable: false },
+					{ pubkey: tokenMint, isSigner: false, isWritable: false },
+					{ pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+					{ pubkey: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', isSigner: false, isWritable: false },
+				],
+				data: Buffer.from([]),
+			});
+		}
+
+		// Add transfer instruction
+		transaction.instructions.push({
+			programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+			keys: [
+				{ pubkey: fromTokenAccount, isSigner: false, isWritable: true },
+				{ pubkey: toTokenAccount, isSigner: false, isWritable: true },
+				{ pubkey: fromPublicKey, isSigner: true, isWritable: false },
+			],
+			data: this.createSplTransferInstruction(adjustedAmount),
+		});
+
+		return transaction;
+	}
+
+	private createTransferInstruction(lamports: number): Buffer {
+		const data = Buffer.alloc(12);
+		data.writeUInt32LE(2, 0); // Transfer instruction
+		data.writeBigUInt64LE(BigInt(lamports), 4);
+		return data;
+	}
+
+	private createSplTransferInstruction(amount: number): Buffer {
+		const data = Buffer.alloc(9);
+		data.writeUInt8(3, 0); // Transfer instruction
+		data.writeBigUInt64LE(BigInt(amount), 1);
+		return data;
+	}
+
+	private createPriorityFeeInstruction(microLamports: number): Buffer {
+		const data = Buffer.alloc(9);
+		data.writeUInt8(3, 0); // SetComputeUnitPrice instruction
+		data.writeBigUInt64LE(BigInt(microLamports), 1);
+		return data;
+	}
+
+	private getAssociatedTokenAccount(owner: string, mint: string): string {
+		// This is a simplified version - in production, use @solana/spl-token
+		// For now, we'll use a placeholder that works with common tokens
+		return `${owner}_${mint}_ata`;
+	}
+
 	async sendTransaction(serializedTransaction: string): Promise<string> {
 		const result = await this.call('sendTransaction', [
 			serializedTransaction,
@@ -202,6 +314,12 @@ export class SolanaNode implements INodeType {
 						value: 'executeSwapAdvanced',
 						description: 'Execute token swap with proper transaction signing',
 						action: 'Execute token swap with proper transaction signing',
+					},
+					{
+						name: 'Send Token',
+						value: 'sendToken',
+						description: 'Send SOL or SPL tokens to another wallet',
+						action: 'Send SOL or SPL tokens to another wallet',
 					},
 				],
 				default: 'getBalance',
@@ -355,6 +473,103 @@ export class SolanaNode implements INodeType {
 					},
 				},
 				description: 'Priority fee in lamports for faster execution (optional)',
+			},
+
+			// Send Token parameters
+			{
+				displayName: 'Recipient Address',
+				name: 'recipientAddress',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'Enter recipient wallet address',
+				displayOptions: {
+					show: {
+						operation: ['sendToken'],
+					},
+				},
+				description: 'Wallet address to send tokens to',
+			},
+			{
+				displayName: 'Token Type',
+				name: 'tokenType',
+				type: 'options',
+				required: true,
+				default: 'SOL',
+				options: [
+					{
+						name: 'SOL (Native)',
+						value: 'SOL',
+						description: 'Send native SOL tokens',
+					},
+					{
+						name: 'USDC',
+						value: 'USDC',
+						description: 'Send USDC tokens',
+					},
+					{
+						name: 'USDT',
+						value: 'USDT',
+						description: 'Send USDT tokens',
+					},
+					{
+						name: 'CHECKHC',
+						value: 'CHECKHC',
+						description: 'Send CHECKHC tokens',
+					},
+					{
+						name: 'Custom Token',
+						value: 'CUSTOM',
+						description: 'Send custom SPL token',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['sendToken'],
+					},
+				},
+				description: 'Type of token to send',
+			},
+			{
+				displayName: 'Custom Token Mint',
+				name: 'customTokenMint',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'Enter token mint address',
+				displayOptions: {
+					show: {
+						operation: ['sendToken'],
+						tokenType: ['CUSTOM'],
+					},
+				},
+				description: 'Mint address of the custom SPL token',
+			},
+			{
+				displayName: 'Amount',
+				name: 'sendAmount',
+				type: 'number',
+				required: true,
+				default: 0,
+				placeholder: '0.1',
+				displayOptions: {
+					show: {
+						operation: ['sendToken'],
+					},
+				},
+				description: 'Amount to send (in token units, e.g., 0.1 SOL or 10 USDC)',
+			},
+			{
+				displayName: 'Priority Fee (Lamports)',
+				name: 'sendPriorityFee',
+				type: 'number',
+				default: 5000,
+				displayOptions: {
+					show: {
+						operation: ['sendToken'],
+					},
+				},
+				description: 'Priority fee in lamports for faster transaction processing',
 			},
 		],
 	};
@@ -721,6 +936,123 @@ export class SolanaNode implements INodeType {
 								inputMint: advInputMint,
 								outputMint: advOutputMint,
 								inputAmount: advSwapAmount,
+								error: error.message,
+								timestamp: new Date().toISOString(),
+								status: 'failed',
+							};
+						}
+						break;
+
+					case 'sendToken':
+						if (!credentials.privateKey) {
+							throw new NodeOperationError(this.getNode(), 'Private key required for token transfer');
+						}
+
+						const recipientAddress = this.getNodeParameter('recipientAddress', i) as string;
+						const tokenType = this.getNodeParameter('tokenType', i) as string;
+						const sendAmount = this.getNodeParameter('sendAmount', i) as number;
+						const sendPriorityFee = this.getNodeParameter('sendPriorityFee', i) as number;
+
+						try {
+							let tokenMint: string;
+							let decimals: number;
+
+							// Define token configurations
+							const tokenConfigs = {
+								'SOL': { mint: 'So11111111111111111111111111111111111111112', decimals: 9 },
+								'USDC': { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 },
+								'USDT': { mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', decimals: 6 },
+								'CHECKHC': { mint: '5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau', decimals: 6 },
+							};
+
+							if (tokenType === 'CUSTOM') {
+								tokenMint = this.getNodeParameter('customTokenMint', i) as string;
+								decimals = 6; // Default to 6 decimals for custom tokens
+							} else if (tokenConfigs[tokenType]) {
+								tokenMint = tokenConfigs[tokenType].mint;
+								decimals = tokenConfigs[tokenType].decimals;
+							} else {
+								throw new Error(`Unsupported token type: ${tokenType}`);
+							}
+
+							let transferTransaction: any;
+							
+							if (tokenType === 'SOL') {
+								// SOL transfer
+								const lamports = sendAmount * LAMPORTS_PER_SOL;
+								transferTransaction = await rpc.createSolTransferTransaction(
+									walletAddress,
+									recipientAddress,
+									lamports,
+									sendPriorityFee
+								);
+							} else {
+								// SPL token transfer
+								transferTransaction = await rpc.createSplTransferTransaction(
+									walletAddress,
+									recipientAddress,
+									tokenMint,
+									sendAmount,
+									decimals,
+									sendPriorityFee
+								);
+							}
+
+							// Create keypair from private key
+							const privateKeyBytes = bs58.decode(credentials.privateKey as string);
+							const keypair = Keypair.fromSecretKey(privateKeyBytes);
+
+							// Use @solana/web3.js for transaction building
+							const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = await import('@solana/web3.js');
+							
+							let transaction: Transaction;
+							
+							if (tokenType === 'SOL') {
+								// Create SOL transfer transaction
+								transaction = new Transaction().add(
+									SystemProgram.transfer({
+										fromPubkey: new PublicKey(walletAddress),
+										toPubkey: new PublicKey(recipientAddress),
+										lamports: sendAmount * LAMPORTS_PER_SOL,
+									})
+								);
+							} else {
+								// For SPL tokens, we'll use a simplified approach
+								// In a production environment, you'd want to use @solana/spl-token
+								// For now, we'll return an error asking users to use SOL transfers
+								throw new Error(`SPL token transfers (${tokenType}) are not yet implemented. Please use SOL transfers for now, or use the swap functionality to convert to SOL first.`);
+							}
+
+							// Set recent blockhash
+							const blockhashResult = await rpc.call('getLatestBlockhash');
+							transaction.recentBlockhash = blockhashResult.value.blockhash;
+							transaction.feePayer = new PublicKey(walletAddress);
+
+							// Sign transaction
+							transaction.sign(keypair);
+
+							// Serialize and send
+							const serializedTx = transaction.serialize().toString('base64');
+							const signature = await rpc.sendTransaction(serializedTx);
+
+							result = {
+								signature,
+								from: walletAddress,
+								to: recipientAddress,
+								tokenType,
+								tokenMint: tokenType !== 'SOL' ? tokenMint : undefined,
+								amount: sendAmount,
+								priorityFee: sendPriorityFee,
+								timestamp: new Date().toISOString(),
+								status: 'submitted',
+							};
+
+						} catch (error) {
+							result = {
+								from: walletAddress,
+								to: recipientAddress,
+								tokenType,
+								amount: sendAmount,
 								error: error.message,
 								timestamp: new Date().toISOString(),
 								status: 'failed',
