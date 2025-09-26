@@ -2,8 +2,8 @@
 node_modules/
 .yarn-integrity
 
-# Build output
-dist/
+# Build output (commented out for n8n distribution)
+# dist/
 *.tgz
 
 # IDE
