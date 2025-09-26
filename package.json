@@ -20,7 +20,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "build": "tsc && gulp build:icons",
+    "build": "npx rimraf dist && tsc && gulp build:icons",
     "dev": "tsc --watch",
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
@@ -39,21 +39,10 @@
       "dist/nodes/SolanaNode/SolanaNode.node.js"
     ]
   },
-  "devDependencies": {
-    "@types/node": "^18.16.16",
-    "gulp": "^4.0.2",
-    "n8n-workflow": "*",
-    "prettier": "^2.7.1",
-    "typescript": "^4.8.4"
-  },
-  "peerDependencies": {
-    "n8n-workflow": "*"
-  },
   "dependencies": {
     "@solana/web3.js": "^1.87.6",
     "axios": "^1.6.0",
     "bs58": "^5.0.0",
-    "tweetnacl": "^1.0.3",
-    "n8n-workflow": "*"
+    "tweetnacl": "^1.0.3"
   }
 }
