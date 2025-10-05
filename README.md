@@ -102,9 +102,105 @@ yarn add @checkhc/n8n-nodes-solana
 - Test on devnet before mainnet
 - Monitor transactions on Solscan
 
+## Development & Deployment
+
+### Architecture
+
+This node uses **pre-compiled distribution** following n8n best practices:
+- TypeScript source files in `nodes/` and `credentials/`
+- Pre-compiled JavaScript files in `dist/` (included in Git)
+- n8n loads nodes from `dist/` - **NO compilation happens at install time**
+
+### Jupiter API Configuration
+
+**IMPORTANT**: This node uses Jupiter DEX aggregator for swaps.
+
+**Correct API URLs**:
+- Quote endpoint: `https://lite-api.jup.ag/swap/v1/quote`
+- Swap endpoint: `https://lite-api.jup.ag/swap/v1/swap`
+
+**⚠️ Common Error**: The domain `quote-api.jup.ag` does NOT exist and will cause `ENOTFOUND` errors. Always use `lite-api.jup.ag`.
+
+### Local Development (WSL2/Linux)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/checkhc/n8n-nodes-solana-swap.git
+cd n8n-nodes-solana-swap
+
+# 2. Install dependencies
+yarn install
+
+# 3. Make your changes in nodes/ or credentials/
+
+# 4. Compile TypeScript to JavaScript
+yarn build
+
+# 5. Commit changes (includes dist/ folder)
+git add .
+git commit -m "Your commit message"
+git push origin main
+
+# 6. Create package for local testing
+yarn pack
+
+# 7. Install in n8n
+cd ~/.n8n/nodes
+yarn remove n8n-nodes-solana-swap
+yarn add file:/path/to/n8n-nodes-solana-swap/n8n-nodes-solana-swap-v1.3.0.tgz
+
+# 8. Restart n8n
+./stop-n8n.sh && ./start-n8n.sh
+```
+
+### Production Deployment (Docker Container)
+
+**Simple Git-based deployment** - NO compilation needed on server:
+
+```bash
+# 1. Enter the Docker container
+docker exec -it root-n8n-1 /bin/sh
+
+# 2. Navigate to the node directory
+cd /home/node/.n8n/nodes/node_modules/n8n-nodes-solana-swap
+
+# 3. Pull pre-compiled files from GitHub
+git pull origin main
+
+# 4. Exit container
+exit
+
+# 5. Restart n8n container
+docker restart root-n8n-1
+
+# 6. Verify logs
+docker logs -f root-n8n-1
+```
+
+**Why it's simple**:
+- ✅ `dist/` folder is versioned in Git with compiled JS files
+- ✅ No need to run `npm install` or `npm run build` on server
+- ✅ Just `git pull` to get latest pre-compiled version
+- ✅ Existing workflows work automatically without modification
+
+### Troubleshooting
+
+**Error: `getaddrinfo ENOTFOUND quote-api.jup.ag`**
+- **Cause**: Incorrect Jupiter API URL
+- **Solution**: Update to `lite-api.jup.ag/swap/v1` (see commit 886870a)
+- **Fix**: Run `git pull origin main` and restart
+
+**Error: Node not updating after changes**
+- **Cause**: n8n caches nodes from `~/.n8n/nodes/node_modules/`
+- **Solution**: Remove and reinstall the package, then restart n8n
+
+**Error: Workflows not working after update**
+- **Cause**: n8n needs restart to load new node version
+- **Solution**: Always restart n8n after updating nodes
+
 ## Support
 
-- **GitHub**: https://github.com/checkhc/n8n-nodes-solana
+- **GitHub**: https://github.com/checkhc/n8n-nodes-solana-swap
 - **Issues**: Report bugs and feature requests on GitHub
 
 ## License
