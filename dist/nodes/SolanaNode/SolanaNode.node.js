@@ -81,7 +81,7 @@ class SolanaRPC {
     }
     // Jupiter API methods
     async getJupiterQuote(inputMint, outputMint, amount, slippageBps = 50) {
-        const jupiterUrl = 'https://quote-api.jup.ag/v6/quote';
+        const jupiterUrl = 'https://lite-api.jup.ag/swap/v1/quote';
         const params = new URLSearchParams({
             inputMint,
             outputMint,
@@ -95,7 +95,7 @@ class SolanaRPC {
         return response.data;
     }
     async getJupiterSwapTransaction(quoteResponse, userPublicKey, priorityFee = 0) {
-        const jupiterUrl = 'https://quote-api.jup.ag/v6/swap';
+        const jupiterUrl = 'https://lite-api.jup.ag/swap/v1/swap';
         const swapRequest = {
             quoteResponse,
             userPublicKey,
