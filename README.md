@@ -1,4 +1,4 @@
-# n8n-nodes-solana
+# n8n-nodes-solana-swap
 
 Custom Solana node for n8n with Jupiter swap integration.
 
@@ -19,16 +19,18 @@ Custom Solana node for n8n with Jupiter swap integration.
 
 1. Go to **Settings** → **Community Nodes**
 2. Click **Install**
-3. Enter: `@checkhc/n8n-nodes-solana`
+3. Enter: `n8n-nodes-solana-swap`
 4. Click **Install**
 
 ### Manual Installation
 
 ```bash
 cd ~/.n8n/nodes
-yarn add n8n-workflow
-yarn add @checkhc/n8n-nodes-solana
+npm install n8n-workflow
+npm install n8n-nodes-solana-swap
 ```
+
+Then restart n8n to load the new node.
 
 ## Configuration
 
@@ -144,13 +146,15 @@ git push origin main
 # 6. Create package for local testing
 yarn pack
 
-# 7. Install in n8n
+# 7. Install in n8n (replace with your actual path)
 cd ~/.n8n/nodes
-yarn remove n8n-nodes-solana-swap
-yarn add file:/path/to/n8n-nodes-solana-swap/n8n-nodes-solana-swap-v1.3.0.tgz
+npm uninstall n8n-nodes-solana-swap
+npm install /home/greg/n8n/n8n-nodes-solana-swap/n8n-nodes-solana-swap-v1.3.0.tgz
 
-# 8. Restart n8n
-./stop-n8n.sh && ./start-n8n.sh
+# 8. Restart n8n (use your restart method)
+# Example with systemd: sudo systemctl restart n8n
+# Example with custom scripts: ./stop-n8n.sh && ./start-n8n.sh
+# Example with pm2: pm2 restart n8n
 ```
 
 ### Production Deployment (Docker Container)
