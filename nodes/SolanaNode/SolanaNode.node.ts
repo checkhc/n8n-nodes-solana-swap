@@ -164,7 +164,19 @@ class SolanaRPC {
 			);
 		}
 
-		return response.data;
+		// Normalize Raydium response to Jupiter format
+		// Raydium: outputAmount -> Jupiter: outAmount
+		// Raydium: inputAmount -> Jupiter: inAmount
+		const normalizedData = {
+			...response.data.data,
+			outAmount: response.data.data.outputAmount,
+			inAmount: response.data.data.inputAmount,
+		};
+
+		return {
+			...response.data,
+			data: normalizedData
+		};
 	}
 
 	async getRaydiumPriorityFee(): Promise<number> {
@@ -224,6 +236,11 @@ class SolanaRPC {
 
 		if (!response.data.success) {
 			throw new Error(`Raydium Swap Error: ${response.data.msg || 'Unknown error'}`);
+		}
+
+		// Safety check: ensure transaction array is not empty
+		if (!response.data.data || response.data.data.length === 0) {
+			throw new Error('Raydium returned empty transaction array');
 		}
 
 		// Transform to Jupiter-compatible format: {swapTransaction: "base64..."}

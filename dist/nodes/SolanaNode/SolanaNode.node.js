@@ -154,7 +154,18 @@ class SolanaRPC {
         if (!response.data.success) {
             throw new Error(`Raydium Error: ${response.data.msg || 'Unknown error'}\nInput: ${inputMint} -> Output: ${outputMint}\nAmount: ${amount}, Slippage: ${slippageBps}bps`);
         }
-        return response.data;
+        // Normalize Raydium response to Jupiter format
+        // Raydium: outputAmount -> Jupiter: outAmount
+        // Raydium: inputAmount -> Jupiter: inAmount
+        const normalizedData = {
+            ...response.data.data,
+            outAmount: response.data.data.outputAmount,
+            inAmount: response.data.data.inputAmount,
+        };
+        return {
+            ...response.data,
+            data: normalizedData
+        };
     }
     async getRaydiumPriorityFee() {
         var _a, _b;
@@ -202,6 +213,10 @@ class SolanaRPC {
         const response = await this.axiosInstance.post(raydiumUrl, swapRequest);
         if (!response.data.success) {
             throw new Error(`Raydium Swap Error: ${response.data.msg || 'Unknown error'}`);
+        }
+        // Safety check: ensure transaction array is not empty
+        if (!response.data.data || response.data.data.length === 0) {
+            throw new Error('Raydium returned empty transaction array');
         }
         // Transform to Jupiter-compatible format: {swapTransaction: "base64..."}
         // Raydium returns: {data: [{transaction: "base64..."}]}
