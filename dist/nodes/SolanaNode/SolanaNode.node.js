@@ -346,15 +346,15 @@ class SolanaRPC {
 class SolanaNode {
     constructor() {
         this.description = {
-            displayName: 'Solana',
+            displayName: 'Solana by CHECKHC',
             name: 'solanaNode',
             icon: 'file:solana-checkhc.svg',
             group: ['transform'],
             version: 1,
             subtitle: '={{$parameter["operation"]}}',
-            description: 'Interact with Solana blockchain - Powered by CHECKHC',
+            description: 'Interact with Solana blockchain - DEX trading (Raydium, Jupiter) & wallet operations - Powered by CHECKHC',
             defaults: {
-                name: 'Solana',
+                name: 'Solana by CHECKHC',
             },
             inputs: ['main'],
             outputs: ['main'],
