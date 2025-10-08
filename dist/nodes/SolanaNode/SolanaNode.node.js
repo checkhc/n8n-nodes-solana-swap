@@ -178,11 +178,15 @@ class SolanaRPC {
     }
     async getRaydiumSwapTransaction(swapResponse, userPublicKey, priorityFee = 0, inputMint, outputMint, txVersion = 'V0') {
         const raydiumUrl = 'https://transaction-v1.raydium.io/transaction/swap-base-in';
-        const isInputSol = inputMint === 'So11111111111111111111111111111111111111112';
-        const isOutputSol = outputMint === 'So11111111111111111111111111111111111111112';
+        const isInputSol = inputMint === SOL_MINT_ADDRESS;
+        const isOutputSol = outputMint === SOL_MINT_ADDRESS;
         if (priorityFee === 0) {
             priorityFee = await this.getRaydiumPriorityFee();
         }
+        // Calculate Associated Token Accounts if not SOL
+        // SOL uses wrapSol/unwrapSol and doesn't need explicit accounts
+        const inputAccount = isInputSol ? undefined : this.getAssociatedTokenAccount(userPublicKey, inputMint);
+        const outputAccount = isOutputSol ? undefined : this.getAssociatedTokenAccount(userPublicKey, outputMint);
         const swapRequest = {
             computeUnitPriceMicroLamports: String(priorityFee),
             swapResponse: swapResponse,
@@ -190,8 +194,8 @@ class SolanaRPC {
             wallet: userPublicKey,
             wrapSol: isInputSol,
             unwrapSol: isOutputSol,
-            inputAccount: undefined,
-            outputAccount: undefined,
+            inputAccount: inputAccount,
+            outputAccount: outputAccount,
         };
         const response = await this.axiosInstance.post(raydiumUrl, swapRequest);
         if (!response.data.success) {
