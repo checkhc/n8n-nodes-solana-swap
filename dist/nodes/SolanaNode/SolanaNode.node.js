@@ -322,7 +322,7 @@ class SolanaNode {
         this.description = {
             displayName: 'Solana',
             name: 'solanaNode',
-            icon: 'file:solana.svg',
+            icon: 'file:solana-checkhc.svg',
             group: ['transform'],
             version: 1,
             subtitle: '={{$parameter["operation"]}}',
