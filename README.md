@@ -5,7 +5,7 @@
 
 > **Developed by [CHECKHC](https://checkhc.net)** - Solana blockchain experts
 
-Custom Solana node for n8n with Jupiter swap integration.
+Custom Solana node for n8n with Raydium and Jupiter swap integration.
 
 ## Features
 
@@ -14,9 +14,9 @@ Custom Solana node for n8n with Jupiter swap integration.
 - ✅ Get Token Price (CoinGecko integration)
 - ✅ Get Transaction History
 - ✅ Get Account Info
-- 🆕 **Get Swap Quote** (Jupiter API)
-- 🆕 **Execute Swap** (Jupiter integration)
-- 🆕 **Execute Swap (Advanced)** (Automatic signing)
+- 🆕 **Get Swap Quote** (Raydium/Jupiter)
+- 🆕 **Execute Swap** (Raydium/Jupiter integration)
+- 🆕 **Execute Swap (Advanced)** (Automatic signing with DEX selection)
 
 ## Installation
 
@@ -75,6 +75,7 @@ Then restart n8n to load the new node.
 ```json
 {
   "operation": "getSwapQuote",
+  "dexProvider": "raydium",
   "inputMint": "So11111111111111111111111111111111111111112",
   "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   "swapAmount": 0.1,
@@ -82,10 +83,15 @@ Then restart n8n to load the new node.
 }
 ```
 
+**DEX Options:**
+- `raydium` (default) - Lower fees, direct routing
+- `jupiter` - Better routing for exotic tokens
+
 ### Execute Swap
 ```json
 {
   "operation": "executeSwapAdvanced",
+  "dexProvider": "raydium",
   "inputMint": "So11111111111111111111111111111111111111112",
   "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   "swapAmount": 0.01,
@@ -93,6 +99,26 @@ Then restart n8n to load the new node.
   "priorityFee": 5000
 }
 ```
+
+## DEX Selection: Raydium vs Jupiter
+
+| Feature | Raydium | Jupiter |
+|---------|---------|----------|
+| **Fees** | ✅ Lower | ⚠️ Variable |
+| **Speed** | ✅ Fast | ⚠️ Depends on routing |
+| **Best For** | Popular tokens | Exotic tokens |
+| **Liquidity** | Raydium pools | Multi-DEX aggregation |
+| **Recommended** | Default choice | Alternative option |
+
+**When to use Raydium:**
+- Swapping popular tokens (SOL, USDC, USDT, RAY, etc.)
+- Want to minimize fees
+- Need faster execution
+
+**When to use Jupiter:**
+- Swapping less common tokens
+- Need best price across multiple DEXs
+- Willing to pay higher fees for better routing
 
 ## Popular Token Addresses
 
