@@ -115,6 +115,62 @@ class SolanaRPC {
         }
         return response.data;
     }
+    // Raydium API methods
+    async getRaydiumQuote(inputMint, outputMint, amount, slippageBps = 50, txVersion = 'V0') {
+        const raydiumUrl = 'https://transaction-v1.raydium.io/compute/swap-base-in';
+        const params = new URLSearchParams({
+            inputMint,
+            outputMint,
+            amount: amount.toString(),
+            slippageBps: slippageBps.toString(),
+            txVersion,
+        });
+        const response = await axios_1.default.get(`${raydiumUrl}?${params}`);
+        if (!response.data.success) {
+            throw new Error(`Raydium Error: ${response.data.msg || 'Unknown error'}`);
+        }
+        return response.data;
+    }
+    async getRaydiumPriorityFee() {
+        var _a, _b;
+        try {
+            const response = await axios_1.default.get('https://transaction-v1.raydium.io/compute/priority-fee');
+            if (response.data.success && ((_b = (_a = response.data.data) === null || _a === void 0 ? void 0 : _a.default) === null || _b === void 0 ? void 0 : _b.h)) {
+                return response.data.data.default.h;
+            }
+        }
+        catch (error) {
+            // Fallback to default if API fails
+        }
+        return 100000; // Default fallback priority fee
+    }
+    async getRaydiumSwapTransaction(swapResponse, userPublicKey, priorityFee = 0, inputMint, outputMint, txVersion = 'V0') {
+        const raydiumUrl = 'https://transaction-v1.raydium.io/transaction/swap-base-in';
+        const isInputSol = inputMint === 'So11111111111111111111111111111111111111112';
+        const isOutputSol = outputMint === 'So11111111111111111111111111111111111111112';
+        if (priorityFee === 0) {
+            priorityFee = await this.getRaydiumPriorityFee();
+        }
+        const swapRequest = {
+            computeUnitPriceMicroLamports: String(priorityFee),
+            swapResponse: swapResponse,
+            txVersion,
+            wallet: userPublicKey,
+            wrapSol: isInputSol,
+            unwrapSol: isOutputSol,
+            inputAccount: undefined,
+            outputAccount: undefined,
+        };
+        const response = await axios_1.default.post(raydiumUrl, swapRequest, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (!response.data.success) {
+            throw new Error(`Raydium Swap Error: ${response.data.msg || 'Unknown error'}`);
+        }
+        return response.data;
+    }
     // Token transfer methods
     async createSolTransferTransaction(fromPublicKey, toPublicKey, lamports, priorityFee = 0) {
         const recentBlockhash = await this.call('getLatestBlockhash');
@@ -232,7 +288,7 @@ class SolanaNode {
             group: ['transform'],
             version: 1,
             subtitle: '={{$parameter["operation"]}}',
-            description: 'Interact with Solana blockchain',
+            description: 'Interact with Solana blockchain - Powered by CHECKHC',
             defaults: {
                 name: 'Solana',
             },
@@ -284,20 +340,20 @@ class SolanaNode {
                         {
                             name: 'Get Swap Quote',
                             value: 'getSwapQuote',
-                            description: 'Get quote for token swap via Jupiter',
-                            action: 'Get quote for token swap via Jupiter',
+                            description: 'Get quote for token swap via DEX (Raydium/Jupiter)',
+                            action: 'Get quote for token swap',
                         },
                         {
                             name: 'Execute Swap',
                             value: 'executeSwap',
-                            description: 'Prepare token swap transaction via Jupiter',
-                            action: 'Prepare token swap transaction via Jupiter',
+                            description: 'Prepare token swap transaction via DEX (Raydium/Jupiter)',
+                            action: 'Prepare token swap transaction',
                         },
                         {
                             name: 'Execute Swap (Advanced)',
                             value: 'executeSwapAdvanced',
-                            description: 'Execute token swap with proper transaction signing',
-                            action: 'Execute token swap with proper transaction signing',
+                            description: 'Execute token swap with proper transaction signing via DEX',
+                            action: 'Execute token swap with signing',
                         },
                         {
                             name: 'Send Token',
@@ -386,6 +442,32 @@ class SolanaNode {
                         },
                     },
                     description: 'Number of transactions to retrieve',
+                },
+                // DEX Selection parameter for swap operations
+                {
+                    displayName: 'DEX',
+                    name: 'dexProvider',
+                    type: 'options',
+                    required: true,
+                    default: 'raydium',
+                    options: [
+                        {
+                            name: 'Raydium',
+                            value: 'raydium',
+                            description: 'Use Raydium DEX (Recommended - Lower fees)',
+                        },
+                        {
+                            name: 'Jupiter',
+                            value: 'jupiter',
+                            description: 'Use Jupiter Aggregator (Better routing)',
+                        },
+                    ],
+                    displayOptions: {
+                        show: {
+                            operation: ['getSwapQuote', 'executeSwap', 'executeSwapAdvanced'],
+                        },
+                    },
+                    description: 'Select which DEX to use for the swap',
                 },
                 // Get Swap Quote parameters
                 {
@@ -721,6 +803,7 @@ class SolanaNode {
                         const outputMint = this.getNodeParameter('outputMint', i);
                         const swapAmount = this.getNodeParameter('swapAmount', i);
                         const slippageBps = this.getNodeParameter('slippageBps', i);
+                        const dexProvider = this.getNodeParameter('dexProvider', i);
                         try {
                             // Convert amount to proper decimals (assuming input token decimals)
                             let amountInSmallestUnit;
@@ -733,8 +816,16 @@ class SolanaNode {
                                 // In production, you should fetch the mint info to get exact decimals
                                 amountInSmallestUnit = swapAmount * 1000000;
                             }
-                            const quote = await rpc.getJupiterQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
+                            let quote;
+                            if (dexProvider === 'raydium') {
+                                const raydiumQuote = await rpc.getRaydiumQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
+                                quote = raydiumQuote.data;
+                            }
+                            else {
+                                quote = await rpc.getJupiterQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
+                            }
                             result = {
+                                dex: dexProvider,
                                 inputMint,
                                 outputMint,
                                 inputAmount: swapAmount,
@@ -750,6 +841,7 @@ class SolanaNode {
                         }
                         catch (error) {
                             result = {
+                                dex: dexProvider,
                                 inputMint,
                                 outputMint,
                                 inputAmount: swapAmount,
@@ -764,6 +856,7 @@ class SolanaNode {
                         const execSwapAmount = this.getNodeParameter('swapAmount', i);
                         const execSlippageBps = this.getNodeParameter('slippageBps', i);
                         const priorityFee = this.getNodeParameter('priorityFee', i);
+                        const execDexProvider = this.getNodeParameter('dexProvider', i);
                         try {
                             // Convert amount to proper decimals
                             let execAmountInSmallestUnit;
@@ -773,11 +866,21 @@ class SolanaNode {
                             else {
                                 execAmountInSmallestUnit = execSwapAmount * 1000000;
                             }
-                            // Get quote first
-                            const execQuote = await rpc.getJupiterQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
-                            // Get swap transaction data (but don't execute it automatically)
-                            const swapTransaction = await rpc.getJupiterSwapTransaction(execQuote, walletAddress, priorityFee);
+                            // Get quote and swap transaction based on DEX
+                            let execQuote;
+                            let swapTransaction;
+                            if (execDexProvider === 'raydium') {
+                                const raydiumQuote = await rpc.getRaydiumQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
+                                const raydiumSwap = await rpc.getRaydiumSwapTransaction(raydiumQuote.data, walletAddress, priorityFee, execInputMint, execOutputMint);
+                                execQuote = raydiumQuote.data;
+                                swapTransaction = { swapTransaction: raydiumSwap.data.transaction[0] };
+                            }
+                            else {
+                                execQuote = await rpc.getJupiterQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
+                                swapTransaction = await rpc.getJupiterSwapTransaction(execQuote, walletAddress, priorityFee);
+                            }
                             result = {
+                                dex: execDexProvider,
                                 swapTransaction: swapTransaction.swapTransaction,
                                 inputMint: execInputMint,
                                 outputMint: execOutputMint,
@@ -814,6 +917,7 @@ class SolanaNode {
                         const advSwapAmount = this.getNodeParameter('swapAmount', i);
                         const advSlippageBps = this.getNodeParameter('slippageBps', i);
                         const advPriorityFee = this.getNodeParameter('priorityFee', i);
+                        const advDexProvider = this.getNodeParameter('dexProvider', i);
                         try {
                             // Convert amount to proper decimals
                             let advAmountInSmallestUnit;
@@ -823,10 +927,18 @@ class SolanaNode {
                             else {
                                 advAmountInSmallestUnit = advSwapAmount * 1000000;
                             }
-                            // Get quote first
-                            const advQuote = await rpc.getJupiterQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
-                            // Get swap transaction
-                            const advSwapTransaction = await rpc.getJupiterSwapTransaction(advQuote, walletAddress, advPriorityFee);
+                            // Get quote and swap transaction based on DEX
+                            let advQuote;
+                            let advSwapTransaction;
+                            if (advDexProvider === 'raydium') {
+                                const raydiumQuote = await rpc.getRaydiumQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
+                                advQuote = raydiumQuote.data;
+                                advSwapTransaction = await rpc.getRaydiumSwapTransaction(advQuote, walletAddress, advPriorityFee, advInputMint, advOutputMint);
+                            }
+                            else {
+                                advQuote = await rpc.getJupiterQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
+                                advSwapTransaction = await rpc.getJupiterSwapTransaction(advQuote, walletAddress, advPriorityFee);
+                            }
                             // Create keypair from private key
                             const privateKeyBytes = bs58.decode(credentials.privateKey);
                             const keypair = web3_js_1.Keypair.fromSecretKey(privateKeyBytes);
@@ -841,6 +953,7 @@ class SolanaNode {
                                 // Send transaction
                                 const txSignature = await rpc.sendTransaction(signedTxBase64);
                                 result = {
+                                    dex: advDexProvider,
                                     signature: txSignature,
                                     inputMint: advInputMint,
                                     outputMint: advOutputMint,
@@ -865,6 +978,7 @@ class SolanaNode {
                                 // Send transaction
                                 const txSignature = await rpc.sendTransaction(signedTxBase64);
                                 result = {
+                                    dex: advDexProvider,
                                     signature: txSignature,
                                     inputMint: advInputMint,
                                     outputMint: advOutputMint,
