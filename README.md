@@ -1,22 +1,44 @@
-# n8n-nodes-solana-swap
+# 🚀 n8n-nodes-solana-swap
 
 [![npm version](https://badge.fury.io/js/n8n-nodes-solana-swap.svg)](https://www.npmjs.com/package/n8n-nodes-solana-swap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/npm/dt/n8n-nodes-solana-swap)](https://www.npmjs.com/package/n8n-nodes-solana-swap)
 
-> **Developed by [CHECKHC](https://checkhc.net)** - Solana blockchain experts
+> **🎁 Free & Open Source** | Developed with ❤️ by [CHECKHC](https://checkhc.net)
 
-Custom Solana node for n8n with Raydium and Jupiter swap integration.
+**The most complete Solana automation node for n8n** - Trade tokens, check balances, and automate your Solana workflows with ease.
 
-## Features
+🔥 **NEW:** Support for both **Raydium** (lower fees) and **Jupiter** (best routing) DEXs!
 
-- ✅ Get SOL Balance
-- ✅ Get Token Balance (SPL tokens)
-- ✅ Get Token Price (CoinGecko integration)
-- ✅ Get Transaction History
-- ✅ Get Account Info
-- 🆕 **Get Swap Quote** (Raydium/Jupiter)
-- 🆕 **Execute Swap** (Raydium/Jupiter integration)
-- 🆕 **Execute Swap (Advanced)** (Automatic signing with DEX selection)
+---
+
+## 🌟 Why This Node?
+
+- ✅ **100% Free & Open Source** - No hidden costs, no API keys required
+- ⚡ **Lightning Fast** - Optimized with parallel requests and smart caching
+- 🔐 **Enterprise Security** - Audited code, sanitized errors, timeout protection
+- 🎯 **Production Ready** - Used in real trading bots and automation workflows
+- 🤝 **Community Driven** - Built by developers, for developers
+
+## ✨ Features
+
+### 💰 Trading & Swaps
+- 🔄 **Token Swaps** - Trade any SPL token via Raydium or Jupiter
+- 📊 **Real-time Quotes** - Get best prices across multiple DEXs
+- ⚙️ **Advanced Execution** - Automatic transaction signing and submission
+- 🎯 **Smart Routing** - Choose between low fees (Raydium) or best price (Jupiter)
+
+### 📈 Monitoring & Analytics  
+- 💵 **Balance Checks** - SOL and SPL token balances
+- 📉 **Price Tracking** - Live token prices via CoinGecko
+- 📜 **Transaction History** - Full account activity logs
+- 🔍 **Account Info** - Detailed on-chain account data
+
+### 🔐 Security First
+- 🛡️ **Private Key Protection** - Sanitized error messages
+- ⏱️ **Request Timeouts** - No hanging workflows
+- ✅ **Input Validation** - Safe amount and address checks
+- 🔄 **Auto Retry** - Exponential backoff for failed requests
 
 ## Installation
 
@@ -71,34 +93,53 @@ Then restart n8n to load the new node.
 }
 ```
 
-### Get Swap Quote
+### 💎 Swap SOL for CHECKHC Token
+
+**Get Best Quote:**
 ```json
 {
   "operation": "getSwapQuote",
   "dexProvider": "raydium",
   "inputMint": "So11111111111111111111111111111111111111112",
-  "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  "swapAmount": 0.1,
+  "outputMint": "5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau",
+  "swapAmount": 1,
   "slippageBps": 50
 }
 ```
 
-**DEX Options:**
-- `raydium` (default) - Lower fees, direct routing
-- `jupiter` - Better routing for exotic tokens
-
-### Execute Swap
+**Execute Swap:**
 ```json
 {
   "operation": "executeSwapAdvanced",
   "dexProvider": "raydium",
   "inputMint": "So11111111111111111111111111111111111111112",
-  "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  "swapAmount": 0.01,
+  "outputMint": "5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau",
+  "swapAmount": 1,
   "slippageBps": 100,
   "priorityFee": 5000
 }
 ```
+
+> 💡 **Tip:** Start with small amounts on devnet to test your automation before going to mainnet!
+
+### 🔄 Swap Any Token
+
+**Example: USDC → CHECKHC**
+```json
+{
+  "operation": "executeSwapAdvanced",
+  "dexProvider": "jupiter",
+  "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "outputMint": "5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau",
+  "swapAmount": 10,
+  "slippageBps": 100,
+  "priorityFee": 5000
+}
+```
+
+**DEX Options:**
+- 🟢 `raydium` - Lower fees, faster execution (Recommended for popular tokens)
+- 🔵 `jupiter` - Best routing, multi-DEX aggregation (Better for less liquid tokens)
 
 ## DEX Selection: Raydium vs Jupiter
 
@@ -120,13 +161,21 @@ Then restart n8n to load the new node.
 - Need best price across multiple DEXs
 - Willing to pay higher fees for better routing
 
-## Popular Token Addresses
+## 📋 Token Addresses (Mainnet)
 
-### Mainnet
-- **SOL**: `So11111111111111111111111111111111111111112`
+### CHECKHC Ecosystem
+- **CHECKHC Token**: `5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau`
+  - 💎 Our native utility token
+  - 🎨 Used for content certification on Solana
+  - 🔗 Trade on Raydium and Jupiter
+
+### Popular Tokens
+- **SOL (Wrapped)**: `So11111111111111111111111111111111111111112`
 - **USDC**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
 - **USDT**: `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB`
-- **RAY**: `4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R`
+- **RAY (Raydium)**: `4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R`
+
+> 🔍 Find more tokens on [Solscan](https://solscan.io) or [Jupiter Token List](https://station.jup.ag/)
 
 ## Security Notes
 
@@ -137,30 +186,38 @@ Then restart n8n to load the new node.
 
 ---
 
-## 🚀 Powered by CHECKHC
+## 💙 About CHECKHC
 
-This node is developed and maintained by **[CHECKHC](https://checkhc.net)**, a Solana blockchain company specializing in content authentication and digital asset certification.
+We're a small team passionate about making Solana accessible to everyone. This node is our contribution to the n8n and Solana communities - **completely free, forever**.
 
-### Why CHECKHC?
+### 🎨 Our Mission
+**Content Certification on Solana**
+- Protect your digital creations (photos, documents, art, videos)
+- Immutable proof of authenticity stored on-chain
+- GDPR-compliant and enterprise-ready
 
-- ✅ **Proven Solana Expertise** - Building on Solana blockchain since day one
-- 🔐 **Security Focus** - Trust & verification at the core of everything we do
-- 🌐 **Open Source Commitment** - Contributing quality tools to the n8n community
+### 🪙 CHECKHC Token
+Our utility token powers our content certification platform:
+- **Symbol**: CHECKHC
+- **Use Cases**: Certification fees, platform access, governance
+- **Trade**: Available on Raydium and Jupiter
+- **Contract**: `5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau`
 
-### Our Solana Services
+### 🤝 Support Us
+If this node saves you time, consider:
+- ⭐ **Star** our [GitHub repo](https://github.com/checkhc/n8n-nodes-solana-swap)
+- 🐦 **Follow** us on [Twitter/X](https://twitter.com/checkhc)
+- 💎 **Try** our [CHECKHC token](https://checkhc.net)
+- 📧 **Share** your feedback at [contact@checkhc.net](mailto:contact@checkhc.net)
 
-🎨 **Content Certification on Solana**
-- Authenticate your digital creations (art, photos, documents, videos)
-- Immutable proof of ownership stored on Solana blockchain
-- GDPR-compliant options available
+### 🏢 Professional Services
+Need custom Solana automation or n8n workflows?
+- 🔧 Custom node development
+- 🤖 Trading bot implementation
+- 🎨 Content certification integration
+- 📊 Blockchain analytics workflows
 
-[🔗 Explore CHECKHC Services](https://checkhc.net) | [🛠️ Try Our Platform](https://app2.photocertif.com)
-
-### Need Help with Solana Automation?
-
-Building on Solana or need custom n8n workflows?
-- 💬 **Community Support**: [GitHub Issues](https://github.com/checkhc/n8n-nodes-solana-swap/issues)
-- 🏢 **Professional Inquiries**: [contact@checkhc.net](mailto:contact@checkhc.net)
+**Get in touch**: [contact@checkhc.net](mailto:contact@checkhc.net) | [https://checkhc.net](https://checkhc.net)
 
 ---
 
@@ -285,4 +342,16 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Made with ❤️ by [CHECKHC](https://checkhc.net) - Empowering Solana automation for everyone**
+---
+
+<div align="center">
+
+**Made with ❤️ by [CHECKHC](https://checkhc.net)**
+
+*Empowering Solana automation for everyone - 100% free, forever*
+
+🌐 [Website](https://checkhc.net) • 🐦 [Twitter](https://twitter.com/checkhc) • 💬 [Discord](https://discord.gg/checkhc) • 📧 [Email](mailto:contact@checkhc.net)
+
+⭐ **Star us on GitHub** if this node is useful to you!
+
+</div>
