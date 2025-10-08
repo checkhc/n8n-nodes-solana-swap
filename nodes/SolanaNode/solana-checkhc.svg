@@ -1,4 +1,4 @@
-<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <!-- Background circle for better visibility -->
   <circle cx="30" cy="30" r="30" fill="#1a1a1a"/>
   
@@ -17,42 +17,6 @@
     <path d="M2 24H38C39.1046 24 40 24.8954 40 26C40 27.1046 39.1046 28 38 28H2C0.89543 28 0 27.1046 0 26C0 24.8954 0.89543 24 2 24Z" fill="#14F195"/>
   </g>
   
-  <!-- CHECKHC badge (hexagon with gradient) - bottom right corner, ENLARGED -->
-  <defs>
-    <linearGradient id="checkhcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FF00FF;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#00D4FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#14F195;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  
-  <!-- Hexagon badge - LARGER (2x scale) -->
-  <g transform="translate(30, 32)">
-    <!-- Outer hexagon with gradient (2x size) -->
-    <path d="M15 0L28 7.5L28 22.5L15 30L2 22.5L2 7.5Z" 
-          fill="url(#checkhcGradient)" 
-          stroke="#000" 
-          stroke-width="1"/>
-    
-    <!-- Inner dark hexagon (2x size) -->
-    <path d="M15 4.5L24.5 9.75L24.5 20.25L15 25.5L5.5 20.25L5.5 9.75Z" 
-          fill="#000000"/>
-    
-    <!-- Simplified person icon - LARGER (white) -->
-    <g transform="translate(15, 15)">
-      <!-- Head -->
-      <circle cx="0" cy="-6" r="2.5" fill="#14F195"/>
-      <!-- Body -->
-      <rect x="-1.2" y="-2.5" width="2.4" height="6.5" rx="0.5" fill="#14F195"/>
-      <!-- Arms -->
-      <rect x="-4" y="-1" width="8" height="1.3" rx="0.5" fill="#14F195"/>
-      <!-- Legs -->
-      <rect x="-1.2" y="3.5" width="1" height="4" rx="0.5" fill="#14F195"/>
-      <rect x="0.2" y="3.5" width="1" height="4" rx="0.5" fill="#14F195"/>
-    </g>
-  </g>
-  
-  <!-- Optional: Solana text or "CHECKHC" text below (commented out for cleaner look)
-  <text x="30" y="55" font-family="Arial, sans-serif" font-size="6" fill="#14F195" text-anchor="middle">CHECKHC</text>
-  -->
+  <!-- CHECKHC official logo - bottom right corner (24x24px from 64x64 source) -->
+  <image x="32" y="32" width="24" height="24" xlink:href="data:image/png;base64,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" />
 </svg>
