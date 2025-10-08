@@ -18,11 +18,13 @@ Perfect for:
 → Portfolio tracking
 → Token monitoring
 
-Try it: npm install n8n-nodes-solana-swap
+🔍 Audit the code: github.com/checkhc/n8n-nodes-solana-swap
+🌐 By @checkhc: checkhc.net
+📦 Install: npm install n8n-nodes-solana-swap
 
-#Solana #n8n #DeFi #Automation #OpenSource
+#Solana #n8n #DeFi #OpenSource
 
-🧵 Thread with examples 👇
+🧵 Thread 👇
 ```
 
 ---
@@ -30,25 +32,55 @@ Try it: npm install n8n-nodes-solana-swap
 ## Post 2 (CHECKHC Token Focus)
 
 ```
-💎 New feature highlight: Swap to $CHECKHC token in ONE click
+💎 Swap to $CHECKHC token in ONE click with our n8n node!
 
-Our utility token powers content certification on Solana
+🌐 CHECKHC Platform (checkhc.net):
+→ Certify digital content on Solana
+→ Immutable proof of ownership
+→ Legal-grade authentication
+→ Used by photographers, artists, enterprises
 
-Example workflow:
-1️⃣ Monitor SOL price
-2️⃣ Auto-swap to CHECKHC when profitable
-3️⃣ Track your portfolio in real-time
+🪙 $CHECKHC Token:
+→ Powers our certification platform
+→ Trade on Raydium & Jupiter
+→ CA: 5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau
 
-Contract: 5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau
+Example: Automate SOL → CHECKHC swaps when profitable
 
-Built this node to help the community 🤝
+🔍 Code: github.com/checkhc/n8n-nodes-solana-swap
 
 #CHECKHC #Solana #DeFi
 ```
 
 ---
 
-## Post 3 (Technical - Security)
+## Post 3 (SECURITY WARNING - Bilingual)
+
+```
+⚠️ CRITICAL SECURITY WARNING for n8n-nodes-solana-swap users
+
+🇬🇧 EN: NEVER use your main wallet!
+→ Create a DEDICATED wallet for automation
+→ Transfer only what you need
+→ Test on devnet first
+→ Withdraw profits regularly
+
+🇫🇷 FR: N'utilisez JAMAIS votre wallet principal !
+→ Créez un wallet DÉDIÉ pour l'automation
+→ Transférez uniquement ce dont vous avez besoin
+→ Testez sur devnet d'abord
+→ Retirez les profits régulièrement
+
+💡 Treat it like a hot wallet with limited funds
+
+📖 Full guide: github.com/checkhc/n8n-nodes-solana-swap
+
+#Solana #Security #n8n
+```
+
+---
+
+## Post 4 (Technical - Security Audit)
 
 ```
 🔐 Security was our #1 priority for n8n-nodes-solana-swap
@@ -60,9 +92,12 @@ What we implemented:
 ✅ Retry logic with exponential backoff
 ✅ Error context (no sensitive data leaks)
 
-Full audit: github.com/checkhc/n8n-nodes-solana-swap
+📖 Full audit report (public):
+github.com/checkhc/n8n-nodes-solana-swap/blob/main/SECURITY_AUDIT_FIXES.md
 
 Production-ready & battle-tested 💪
+
+By @checkhc: checkhc.net
 
 #Solana #Security #OpenSource
 ```
@@ -74,18 +109,21 @@ Production-ready & battle-tested 💪
 ```
 🤝 Why we built n8n-nodes-solana-swap:
 
-As a small team, we believe in:
+As @checkhc team, we believe in:
 → Open Source > Proprietary
 → Community > Profit
-→ Education > Gatekeeping
+→ Transparency > Black boxes
 
 This node is our way of giving back to @Solana & @n8n_io communities
 
-100% free, forever. No strings attached.
+100% free, forever. All code is public.
+
+🔍 View source: github.com/checkhc/n8n-nodes-solana-swap
+🌐 Learn more: checkhc.net
 
 If it helps you, a ⭐ on GitHub would mean the world 💙
 
-github.com/checkhc/n8n-nodes-solana-swap
+#OpenSource #Solana
 ```
 
 ---
@@ -163,24 +201,27 @@ github.com/checkhc/n8n-nodes-solana-swap
 ## Post 8 (Call to Action - CHECKHC)
 
 ```
-💙 CHECKHC Token - Content Certification on Solana
+💙 CHECKHC - Content Certification on Solana
+
+🌐 Platform: checkhc.net
 
 What we do:
-→ Protect digital creations (photos, docs, art)
-→ Immutable proof on-chain
+→ Certify digital content on blockchain
+→ Immutable proof for photos, docs, art, videos
+→ Legal-grade authentication
 → GDPR-compliant & enterprise-ready
 
-$CHECKHC powers our platform:
-→ Certification fees
-→ Platform access
-→ Governance
-
-Trade on Raydium & Jupiter
-Try our n8n node for easy swaps!
+🪙 $CHECKHC Token:
+→ Powers certification platform
+→ Governance & access rights
+→ Trade on Raydium & Jupiter
 
 CA: 5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau
 
-#CHECKHC #Solana
+📦 Use our FREE n8n node to automate swaps:
+github.com/checkhc/n8n-nodes-solana-swap
+
+#CHECKHC #Solana #Web3
 ```
 
 ---
@@ -234,6 +275,8 @@ Want early access?
 ### Tip 1
 ```
 💡 Quick tip: Always test your swaps on devnet first!
+
+🔍 Full code on GitHub: github.com/checkhc/n8n-nodes-solana-swap
 
 Change your RPC endpoint to:
 https://api.devnet.solana.com

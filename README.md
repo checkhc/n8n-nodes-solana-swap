@@ -3,23 +3,59 @@
 [![npm version](https://badge.fury.io/js/n8n-nodes-solana-swap.svg)](https://www.npmjs.com/package/n8n-nodes-solana-swap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/npm/dt/n8n-nodes-solana-swap)](https://www.npmjs.com/package/n8n-nodes-solana-swap)
+[![GitHub stars](https://img.shields.io/github/stars/checkhc/n8n-nodes-solana-swap?style=social)](https://github.com/checkhc/n8n-nodes-solana-swap)
+[![GitHub](https://img.shields.io/badge/GitHub-View_Source-blue?logo=github)](https://github.com/checkhc/n8n-nodes-solana-swap)
 
-> **🎁 Free & Open Source** | Developed with ❤️ by [CHECKHC](https://checkhc.net)
+> **🎁 Free & Open Source** | Developed with ❤️ by [CHECKHC](https://checkhc.net) | [📖 View Source on GitHub](https://github.com/checkhc/n8n-nodes-solana-swap)
 
 **A complete & production-ready Solana automation node for n8n** - Trade tokens, check balances, and automate your Solana workflows with enterprise-grade features.
+
+🔍 **Full transparency**: [Audit the code yourself on GitHub](https://github.com/checkhc/n8n-nodes-solana-swap) - We believe in open source!
 
 🔥 **NEW:** Support for both **Raydium** (lower fees) and **Jupiter** (best routing) DEXs!
 
 ---
 
+## ⚠️ SECURITY WARNING / AVERTISSEMENT DE SÉCURITÉ
+
+### 🇬🇧 English
+
+**NEVER use your main wallet with n8n automation!**
+
+This node requires your **private key** to sign transactions. For your security:
+
+- ✅ **Create a DEDICATED wallet** for n8n automation only
+- ✅ **Transfer only the amount** you need for trading/swaps
+- ✅ **Never store large amounts** in your automation wallet
+- ✅ **Test on devnet first** before using real funds
+- ✅ **Monitor regularly** and withdraw profits to your secure wallet
+
+💡 **Best Practice**: Treat your automation wallet like a "hot wallet" with limited funds, not your main cold storage.
+
+### 🇫🇷 Français
+
+**N'utilisez JAMAIS votre wallet principal avec l'automation n8n !**
+
+Ce node nécessite votre **clé privée** pour signer les transactions. Pour votre sécurité :
+
+- ✅ **Créez un wallet DÉDIÉ** uniquement pour l'automation n8n
+- ✅ **Transférez uniquement le montant** nécessaire pour vos trades/swaps
+- ✅ **Ne stockez jamais de gros montants** dans votre wallet d'automation
+- ✅ **Testez sur devnet d'abord** avant d'utiliser de vrais fonds
+- ✅ **Surveillez régulièrement** et retirez les profits vers votre wallet sécurisé
+
+💡 **Bonne pratique** : Traitez votre wallet d'automation comme un "hot wallet" avec des fonds limités, pas comme votre stockage froid principal.
+
+---
+
 ## 🌟 Why This Node?
 
-- ✅ **100% Free & Open Source** - No hidden costs, no API keys required
+- ✅ **100% Free & Open Source** - [View code on GitHub](https://github.com/checkhc/n8n-nodes-solana-swap), no hidden costs, no API keys
 - 🔄 **Dual DEX Support** - Both Raydium AND Jupiter (choose best pricing)
 - ⚡ **Lightning Fast** - Optimized with parallel requests and smart caching (10x faster)
-- 🔐 **Enterprise Security** - Fully audited code, sanitized errors, timeout protection
+- 🔐 **Enterprise Security** - [Fully audited code](https://github.com/checkhc/n8n-nodes-solana-swap/blob/main/SECURITY_AUDIT_FIXES.md), sanitized errors, timeout protection
 - 🎯 **Production Ready** - Battle-tested in live trading bots and automation workflows
-- 🤝 **Community Driven** - Built by developers, for developers
+- 🤝 **Community Driven** - Built by [CHECKHC](https://checkhc.net), for developers everywhere
 
 ## ✨ Features
 
@@ -178,47 +214,125 @@ Then restart n8n to load the new node.
 
 > 🔍 Find more tokens on [Solscan](https://solscan.io) or [Jupiter Token List](https://station.jup.ag/)
 
-## Security Notes
+## 🔐 Security Best Practices / Bonnes Pratiques de Sécurité
 
-- Start with small amounts for testing
-- Use dedicated wallets for n8n automation
-- Test on devnet before mainnet
-- Monitor transactions on Solscan
+### 🇬🇧 English
+
+**Critical Security Rules:**
+
+1. **Dedicated Wallet Only**
+   - Create a separate wallet ONLY for n8n automation
+   - Never use your main wallet or hardware wallet
+   - Keep only what you need for active trades
+
+2. **Start Small**
+   - Test with tiny amounts first (0.01 SOL)
+   - Test on devnet before mainnet
+   - Verify every workflow before scaling up
+
+3. **Monitor Everything**
+   - Check transactions on [Solscan](https://solscan.io)
+   - Set up balance alerts
+   - Review logs regularly
+
+4. **Withdraw Profits**
+   - Don't let profits accumulate in automation wallet
+   - Transfer to secure cold storage regularly
+   - Keep automation wallet balance minimal
+
+5. **Network Security**
+   - Use trusted RPC endpoints (Helius, QuickNode)
+   - Enable 2FA on your n8n instance
+   - Restrict n8n access by IP if possible
+
+### 🇫🇷 Français
+
+**Règles de Sécurité Critiques :**
+
+1. **Wallet Dédié Uniquement**
+   - Créez un wallet séparé UNIQUEMENT pour l'automation n8n
+   - N'utilisez jamais votre wallet principal ou hardware wallet
+   - Gardez seulement ce dont vous avez besoin pour vos trades actifs
+
+2. **Commencez Petit**
+   - Testez avec de très petits montants (0.01 SOL)
+   - Testez sur devnet avant mainnet
+   - Vérifiez chaque workflow avant de monter en volume
+
+3. **Surveillez Tout**
+   - Vérifiez les transactions sur [Solscan](https://solscan.io)
+   - Configurez des alertes de solde
+   - Consultez les logs régulièrement
+
+4. **Retirez les Profits**
+   - Ne laissez pas les profits s'accumuler dans le wallet d'automation
+   - Transférez régulièrement vers un stockage froid sécurisé
+   - Gardez le solde du wallet d'automation minimal
+
+5. **Sécurité Réseau**
+   - Utilisez des endpoints RPC de confiance (Helius, QuickNode)
+   - Activez 2FA sur votre instance n8n
+   - Restreignez l'accès n8n par IP si possible
+
+⚠️ **Remember / Rappel**: This node is a tool. YOU are responsible for your funds' security. / Ce node est un outil. VOUS êtes responsable de la sécurité de vos fonds.
 
 ---
 
 ## 💙 About CHECKHC
 
-We're a small team passionate about making Solana accessible to everyone. This node is our contribution to the n8n and Solana communities - **completely free, forever**.
+> **We're [CHECKHC](https://checkhc.net)** - A Solana-focused team building trust infrastructure on blockchain.
 
-### 🎨 Our Mission
-**Content Certification on Solana**
-- Protect your digital creations (photos, documents, art, videos)
-- Immutable proof of authenticity stored on-chain
-- GDPR-compliant and enterprise-ready
+This node is our **free gift** to the n8n and Solana communities. We believe in open source, transparency, and making Web3 accessible to everyone.
 
-### 🪙 CHECKHC Token
-Our utility token powers our content certification platform:
+### 🎨 Our Main Product: Content Certification
+**[CHECKHC Platform](https://checkhc.net)** - Protect your digital assets on Solana
+
+- 📸 **Certify** photos, documents, art, videos with blockchain proof
+- 🔐 **Immutable** timestamps and ownership verification
+- ⚖️ **Legal-grade** proof accepted by courts (GDPR-compliant)
+- 🌍 **Used by**: Photographers, legal firms, artists, enterprises
+
+👉 **[Try it now: checkhc.net](https://checkhc.net)**
+
+### 🪙 CHECKHC Token - Our Utility Token
+
+Powers the certification platform:
 - **Symbol**: CHECKHC
 - **Use Cases**: Certification fees, platform access, governance
-- **Trade**: Available on Raydium and Jupiter
+- **Trade on**: [Raydium](https://raydium.io) & [Jupiter](https://jup.ag)
 - **Contract**: `5tpkrCVVh6tjjve4TuyP8MXBwURufgAnaboaLwo49uau`
 
-### 🤝 Support Us
-If this node saves you time, consider:
-- ⭐ **Star** our [GitHub repo](https://github.com/checkhc/n8n-nodes-solana-swap)
-- 🐦 **Follow** us on [Twitter/X](https://twitter.com/checkhc)
-- 💎 **Try** our [CHECKHC token](https://checkhc.net)
-- 📧 **Share** your feedback at [contact@checkhc.net](mailto:contact@checkhc.net)
+💡 **Tip**: Use this node to swap to CHECKHC and support our open source work!
 
-### 🏢 Professional Services
-Need custom Solana automation or n8n workflows?
-- 🔧 Custom node development
-- 🤖 Trading bot implementation
-- 🎨 Content certification integration
-- 📊 Blockchain analytics workflows
+---
 
-**Get in touch**: [contact@checkhc.net](mailto:contact@checkhc.net) | [https://checkhc.net](https://checkhc.net)
+### 🤝 Support This Project
+
+If this node saves you time or makes you money:
+
+1. ⭐ **[Star us on GitHub](https://github.com/checkhc/n8n-nodes-solana-swap)** (helps others discover it)
+2. 🐦 **[Follow @checkhc on Twitter/X](https://twitter.com/checkhc)** (stay updated)
+3. 💎 **[Try CHECKHC token](https://checkhc.net)** (support development)
+4. 📢 **Share** with your network (spread the word)
+5. 📧 **[Send feedback](mailto:contact@checkhc.net)** (help us improve)
+
+---
+
+### 🏢 Professional Services by CHECKHC
+
+Need custom Solana development or n8n workflows?
+
+**We offer**:
+- 🔧 Custom n8n node development
+- 🤖 Trading bot implementation & optimization
+- 🎨 Content certification integration for your platform
+- 📊 Blockchain analytics & monitoring workflows
+- 🔐 Smart contract audits & security reviews
+- 💼 Enterprise Solana consulting
+
+**Contact us**: [contact@checkhc.net](mailto:contact@checkhc.net)
+
+**Learn more**: [https://checkhc.net](https://checkhc.net)
 
 ---
 
@@ -351,8 +465,10 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 *Empowering Solana automation for everyone - 100% free, forever*
 
-🌐 [Website](https://checkhc.net) • 🐦 [Twitter](https://twitter.com/checkhc) • 💬 [Discord](https://discord.gg/checkhc) • 📧 [Email](mailto:contact@checkhc.net)
+🌐 [Website](https://checkhc.net) • 💻 [GitHub](https://github.com/checkhc/n8n-nodes-solana-swap) • 🐦 [Twitter](https://twitter.com/checkhc) • 💬 [Discord](https://discord.gg/checkhc) • 📧 [Email](mailto:contact@checkhc.net)
 
-⭐ **Star us on GitHub** if this node is useful to you!
+⭐ **[Star us on GitHub](https://github.com/checkhc/n8n-nodes-solana-swap)** if this node is useful to you!
+
+🔍 **Transparency matters**: All our code is [audited and open source](https://github.com/checkhc/n8n-nodes-solana-swap/blob/main/SECURITY_AUDIT_FIXES.md)
 
 </div>
