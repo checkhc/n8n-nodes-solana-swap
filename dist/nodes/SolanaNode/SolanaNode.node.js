@@ -203,7 +203,12 @@ class SolanaRPC {
         if (!response.data.success) {
             throw new Error(`Raydium Swap Error: ${response.data.msg || 'Unknown error'}`);
         }
-        return response.data;
+        // Transform to Jupiter-compatible format: {swapTransaction: "base64..."}
+        // Raydium returns: {data: [{transaction: "base64..."}]}
+        return {
+            swapTransaction: response.data.data[0].transaction,
+            ...response.data
+        };
     }
     // Token transfer methods
     async createSolTransferTransaction(fromPublicKey, toPublicKey, lamports, priorityFee = 0) {
@@ -923,7 +928,8 @@ class SolanaNode {
                                 // Pass FULL raydiumQuote object (not just .data)
                                 const raydiumSwap = await rpc.getRaydiumSwapTransaction(raydiumQuote, walletAddress, priorityFee, execInputMint, execOutputMint);
                                 execQuote = raydiumQuote.data;
-                                swapTransaction = { swapTransaction: raydiumSwap.data.transaction[0] };
+                                // getRaydiumSwapTransaction already returns Jupiter-compatible format
+                                swapTransaction = raydiumSwap;
                             }
                             else {
                                 execQuote = await rpc.getJupiterQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
