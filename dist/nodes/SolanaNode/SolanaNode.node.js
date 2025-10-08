@@ -920,7 +920,8 @@ class SolanaNode {
                             let swapTransaction;
                             if (execDexProvider === 'raydium') {
                                 const raydiumQuote = await rpc.getRaydiumQuote(execInputMint, execOutputMint, execAmountInSmallestUnit, execSlippageBps);
-                                const raydiumSwap = await rpc.getRaydiumSwapTransaction(raydiumQuote.data, walletAddress, priorityFee, execInputMint, execOutputMint);
+                                // Pass FULL raydiumQuote object (not just .data)
+                                const raydiumSwap = await rpc.getRaydiumSwapTransaction(raydiumQuote, walletAddress, priorityFee, execInputMint, execOutputMint);
                                 execQuote = raydiumQuote.data;
                                 swapTransaction = { swapTransaction: raydiumSwap.data.transaction[0] };
                             }
@@ -981,7 +982,8 @@ class SolanaNode {
                             if (advDexProvider === 'raydium') {
                                 const raydiumQuote = await rpc.getRaydiumQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
                                 advQuote = raydiumQuote.data;
-                                advSwapTransaction = await rpc.getRaydiumSwapTransaction(advQuote, walletAddress, advPriorityFee, advInputMint, advOutputMint);
+                                // Pass FULL raydiumQuote object (not just .data) - Raydium needs {id, success, version, data}
+                                advSwapTransaction = await rpc.getRaydiumSwapTransaction(raydiumQuote, walletAddress, advPriorityFee, advInputMint, advOutputMint);
                             }
                             else {
                                 advQuote = await rpc.getJupiterQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
