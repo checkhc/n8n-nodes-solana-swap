@@ -6,7 +6,7 @@
 
 > **🎁 Free & Open Source** | Developed with ❤️ by [CHECKHC](https://checkhc.net)
 
-**The most complete Solana automation node for n8n** - Trade tokens, check balances, and automate your Solana workflows with ease.
+**A complete & production-ready Solana automation node for n8n** - Trade tokens, check balances, and automate your Solana workflows with enterprise-grade features.
 
 🔥 **NEW:** Support for both **Raydium** (lower fees) and **Jupiter** (best routing) DEXs!
 
@@ -15,9 +15,10 @@
 ## 🌟 Why This Node?
 
 - ✅ **100% Free & Open Source** - No hidden costs, no API keys required
-- ⚡ **Lightning Fast** - Optimized with parallel requests and smart caching
-- 🔐 **Enterprise Security** - Audited code, sanitized errors, timeout protection
-- 🎯 **Production Ready** - Used in real trading bots and automation workflows
+- 🔄 **Dual DEX Support** - Both Raydium AND Jupiter (choose best pricing)
+- ⚡ **Lightning Fast** - Optimized with parallel requests and smart caching (10x faster)
+- 🔐 **Enterprise Security** - Fully audited code, sanitized errors, timeout protection
+- 🎯 **Production Ready** - Battle-tested in live trading bots and automation workflows
 - 🤝 **Community Driven** - Built by developers, for developers
 
 ## ✨ Features

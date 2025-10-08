@@ -5,7 +5,7 @@
 ```
 🚀 Just released: n8n-nodes-solana-swap v1.5.0
 
-The FIRST fully-featured Solana automation node for @n8n_io
+A production-ready Solana automation node for @n8n_io
 
 ✅ Trade ANY token (Raydium + Jupiter)
 ⚡ Lightning fast (parallel requests)
