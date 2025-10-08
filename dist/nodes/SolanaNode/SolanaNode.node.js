@@ -183,10 +183,10 @@ class SolanaRPC {
         if (priorityFee === 0) {
             priorityFee = await this.getRaydiumPriorityFee();
         }
-        // Calculate Associated Token Accounts if not SOL
-        // SOL uses wrapSol/unwrapSol and doesn't need explicit accounts
-        const inputAccount = isInputSol ? undefined : this.getAssociatedTokenAccount(userPublicKey, inputMint);
-        const outputAccount = isOutputSol ? undefined : this.getAssociatedTokenAccount(userPublicKey, outputMint);
+        // According to Raydium docs:
+        // - inputAccount: required if inputToken ≠ SOL
+        // - outputAccount: defaults to ATA if undefined
+        // For first-time swaps, leaving outputAccount undefined lets Raydium create the ATA
         const swapRequest = {
             computeUnitPriceMicroLamports: String(priorityFee),
             swapResponse: swapResponse,
@@ -194,8 +194,10 @@ class SolanaRPC {
             wallet: userPublicKey,
             wrapSol: isInputSol,
             unwrapSol: isOutputSol,
-            inputAccount: inputAccount,
-            outputAccount: outputAccount,
+            // Only pass inputAccount if it's not SOL (SOL uses wrapSol)
+            inputAccount: isInputSol ? undefined : this.getAssociatedTokenAccount(userPublicKey, inputMint),
+            // Leave outputAccount undefined - Raydium will use/create ATA automatically
+            outputAccount: undefined,
         };
         const response = await this.axiosInstance.post(raydiumUrl, swapRequest);
         if (!response.data.success) {
