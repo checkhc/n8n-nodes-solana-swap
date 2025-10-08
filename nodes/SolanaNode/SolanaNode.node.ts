@@ -394,7 +394,7 @@ export class SolanaNode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Solana by CHECKHC',
 		name: 'solanaNode',
-		icon: 'file:solana-checkhc.svg',
+		icon: 'file:solana-checkhc.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
