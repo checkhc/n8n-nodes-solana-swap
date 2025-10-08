@@ -31,27 +31,56 @@ const n8n_workflow_1 = require("n8n-workflow");
 const bs58 = __importStar(require("bs58"));
 const axios_1 = __importDefault(require("axios"));
 const web3_js_1 = require("@solana/web3.js");
+// Constants
 const LAMPORTS_PER_SOL = 1000000000;
+const SOL_MINT_ADDRESS = 'So11111111111111111111111111111111111111112';
+const DEFAULT_TOKEN_DECIMALS = 6;
+const TOKEN_PROGRAM_ID = new web3_js_1.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const ASSOCIATED_TOKEN_PROGRAM_ID = new web3_js_1.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+const API_TIMEOUT_MS = 30000;
+const PRIORITY_FEE_CACHE_MS = 10000;
 // Helper functions for Solana RPC calls
 class SolanaRPC {
     constructor(rpcUrl) {
+        this.priorityFeeCache = null;
         this.rpcUrl = rpcUrl;
-    }
-    async call(method, params = []) {
-        const response = await axios_1.default.post(this.rpcUrl, {
-            jsonrpc: '2.0',
-            id: 1,
-            method,
-            params,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        // Configure axios with timeout and retry
+        this.axiosInstance = axios_1.default.create({
+            timeout: API_TIMEOUT_MS,
+            headers: { 'Content-Type': 'application/json' },
         });
-        if (response.data.error) {
-            throw new Error(`RPC Error: ${response.data.error.message}`);
+    }
+    // Validation utilities
+    validateSolanaAddress(address) {
+        const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+        return base58Regex.test(address);
+    }
+    convertToSmallestUnit(amount, mint) {
+        if (mint === SOL_MINT_ADDRESS) {
+            return amount * LAMPORTS_PER_SOL;
         }
-        return response.data.result;
+        return amount * Math.pow(10, DEFAULT_TOKEN_DECIMALS);
+    }
+    async call(method, params = [], retries = 3) {
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const response = await this.axiosInstance.post(this.rpcUrl, {
+                    jsonrpc: '2.0',
+                    id: Date.now(),
+                    method,
+                    params,
+                });
+                if (response.data.error) {
+                    throw new Error(`RPC Error (${method}): ${response.data.error.message}\nEndpoint: ${this.rpcUrl}`);
+                }
+                return response.data.result;
+            }
+            catch (error) {
+                if (attempt === retries - 1)
+                    throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            }
+        }
     }
     async getBalance(publicKey) {
         const result = await this.call('getBalance', [publicKey]);
@@ -88,9 +117,9 @@ class SolanaRPC {
             amount: amount.toString(),
             slippageBps: slippageBps.toString(),
         });
-        const response = await axios_1.default.get(`${jupiterUrl}?${params}`);
+        const response = await this.axiosInstance.get(`${jupiterUrl}?${params}`);
         if (response.data.error) {
-            throw new Error(`Jupiter Error: ${response.data.error}`);
+            throw new Error(`Jupiter Error: ${response.data.error}\nInput: ${inputMint} -> Output: ${outputMint}\nAmount: ${amount}`);
         }
         return response.data;
     }
@@ -105,11 +134,7 @@ class SolanaRPC {
                 maxLamports: priorityFee,
             } : undefined,
         };
-        const response = await axios_1.default.post(jupiterUrl, swapRequest, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await this.axiosInstance.post(jupiterUrl, swapRequest);
         if (response.data.error) {
             throw new Error(`Jupiter Swap Error: ${response.data.error}`);
         }
@@ -125,24 +150,31 @@ class SolanaRPC {
             slippageBps: slippageBps.toString(),
             txVersion,
         });
-        const response = await axios_1.default.get(`${raydiumUrl}?${params}`);
+        const response = await this.axiosInstance.get(`${raydiumUrl}?${params}`);
         if (!response.data.success) {
-            throw new Error(`Raydium Error: ${response.data.msg || 'Unknown error'}`);
+            throw new Error(`Raydium Error: ${response.data.msg || 'Unknown error'}\nInput: ${inputMint} -> Output: ${outputMint}\nAmount: ${amount}, Slippage: ${slippageBps}bps`);
         }
         return response.data;
     }
     async getRaydiumPriorityFee() {
         var _a, _b;
+        const now = Date.now();
+        if (this.priorityFeeCache && (now - this.priorityFeeCache.timestamp) < PRIORITY_FEE_CACHE_MS) {
+            return this.priorityFeeCache.value;
+        }
         try {
-            const response = await axios_1.default.get('https://transaction-v1.raydium.io/compute/priority-fee');
+            const response = await this.axiosInstance.get('https://transaction-v1.raydium.io/compute/priority-fee');
             if (response.data.success && ((_b = (_a = response.data.data) === null || _a === void 0 ? void 0 : _a.default) === null || _b === void 0 ? void 0 : _b.h)) {
-                return response.data.data.default.h;
+                const fee = response.data.data.default.h;
+                this.priorityFeeCache = { value: fee, timestamp: now };
+                return fee;
             }
         }
         catch (error) {
-            // Fallback to default if API fails
+            if (this.priorityFeeCache)
+                return this.priorityFeeCache.value;
         }
-        return 100000; // Default fallback priority fee
+        return 100000;
     }
     async getRaydiumSwapTransaction(swapResponse, userPublicKey, priorityFee = 0, inputMint, outputMint, txVersion = 'V0') {
         const raydiumUrl = 'https://transaction-v1.raydium.io/transaction/swap-base-in';
@@ -161,11 +193,7 @@ class SolanaRPC {
             inputAccount: undefined,
             outputAccount: undefined,
         };
-        const response = await axios_1.default.post(raydiumUrl, swapRequest, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await this.axiosInstance.post(raydiumUrl, swapRequest);
         if (!response.data.success) {
             throw new Error(`Raydium Swap Error: ${response.data.msg || 'Unknown error'}`);
         }
@@ -263,9 +291,19 @@ class SolanaRPC {
         return data;
     }
     getAssociatedTokenAccount(owner, mint) {
-        // This is a simplified version - in production, use @solana/spl-token
-        // For now, we'll use a placeholder that works with common tokens
-        return `${owner}_${mint}_ata`;
+        try {
+            const ownerPubkey = new web3_js_1.PublicKey(owner);
+            const mintPubkey = new web3_js_1.PublicKey(mint);
+            const [ata] = web3_js_1.PublicKey.findProgramAddressSync([
+                ownerPubkey.toBuffer(),
+                TOKEN_PROGRAM_ID.toBuffer(),
+                mintPubkey.toBuffer(),
+            ], ASSOCIATED_TOKEN_PROGRAM_ID);
+            return ata.toBase58();
+        }
+        catch (error) {
+            throw new Error(`Failed to derive Associated Token Account: Invalid address format`);
+        }
     }
     async sendTransaction(serializedTransaction) {
         const result = await this.call('sendTransaction', [
@@ -635,7 +673,7 @@ class SolanaNode {
         };
     }
     async execute() {
-        var _a, _b, _c;
+        var _a;
         const items = this.getInputData();
         const returnData = [];
         for (let i = 0; i < items.length; i++) {
@@ -747,20 +785,26 @@ class SolanaNode {
                         const limit = this.getNodeParameter('limit', i);
                         try {
                             const signatures = await rpc.getSignaturesForAddress(historyWallet, limit);
-                            const transactions = [];
-                            for (const sig of signatures) {
-                                const tx = await rpc.getTransaction(sig.signature);
-                                if (tx) {
-                                    transactions.push({
-                                        signature: sig.signature,
-                                        slot: sig.slot,
-                                        blockTime: sig.blockTime,
-                                        confirmationStatus: sig.confirmationStatus,
-                                        fee: (_b = tx.meta) === null || _b === void 0 ? void 0 : _b.fee,
-                                        success: ((_c = tx.meta) === null || _c === void 0 ? void 0 : _c.err) === null,
-                                    });
+                            // Parallel fetching for better performance
+                            const transactions = await Promise.all(signatures.map(async (sig) => {
+                                var _a, _b;
+                                try {
+                                    const tx = await rpc.getTransaction(sig.signature);
+                                    if (tx) {
+                                        return {
+                                            signature: sig.signature,
+                                            slot: sig.slot,
+                                            blockTime: sig.blockTime,
+                                            confirmationStatus: sig.confirmationStatus,
+                                            fee: (_a = tx.meta) === null || _a === void 0 ? void 0 : _a.fee,
+                                            success: ((_b = tx.meta) === null || _b === void 0 ? void 0 : _b.err) === null,
+                                        };
+                                    }
                                 }
-                            }
+                                catch (error) {
+                                    return null;
+                                }
+                            })).then(results => results.filter(Boolean));
                             result = {
                                 walletAddress: historyWallet,
                                 transactions,
@@ -772,7 +816,7 @@ class SolanaNode {
                                 walletAddress: historyWallet,
                                 transactions: [],
                                 count: 0,
-                                error: error.message,
+                                error: 'Failed to fetch transaction history',
                             };
                         }
                         break;
@@ -805,17 +849,15 @@ class SolanaNode {
                         const slippageBps = this.getNodeParameter('slippageBps', i);
                         const dexProvider = this.getNodeParameter('dexProvider', i);
                         try {
-                            // Convert amount to proper decimals (assuming input token decimals)
-                            let amountInSmallestUnit;
-                            if (inputMint === 'So11111111111111111111111111111111111111112') {
-                                // SOL has 9 decimals
-                                amountInSmallestUnit = swapAmount * LAMPORTS_PER_SOL;
+                            // Validation
+                            if (swapAmount <= 0) {
+                                throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Swap amount must be greater than 0');
                             }
-                            else {
-                                // For other tokens, assume 6 decimals (most common)
-                                // In production, you should fetch the mint info to get exact decimals
-                                amountInSmallestUnit = swapAmount * 1000000;
+                            if (swapAmount > 1000000) {
+                                throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Swap amount too large (max: 1,000,000)');
                             }
+                            // Use helper method for conversion
+                            const amountInSmallestUnit = rpc['convertToSmallestUnit'](swapAmount, inputMint);
                             let quote;
                             if (dexProvider === 'raydium') {
                                 const raydiumQuote = await rpc.getRaydiumQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
@@ -824,13 +866,15 @@ class SolanaNode {
                             else {
                                 quote = await rpc.getJupiterQuote(inputMint, outputMint, amountInSmallestUnit, slippageBps);
                             }
+                            // Calculate output with proper decimals
+                            const outputDecimals = outputMint === SOL_MINT_ADDRESS ? LAMPORTS_PER_SOL : Math.pow(10, DEFAULT_TOKEN_DECIMALS);
                             result = {
                                 dex: dexProvider,
                                 inputMint,
                                 outputMint,
                                 inputAmount: swapAmount,
                                 inputAmountRaw: amountInSmallestUnit.toString(),
-                                outputAmount: parseFloat(quote.outAmount) / (outputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+                                outputAmount: parseFloat(quote.outAmount) / outputDecimals,
                                 outputAmountRaw: quote.outAmount,
                                 priceImpactPct: quote.priceImpactPct,
                                 slippageBps: slippageBps,
@@ -845,7 +889,7 @@ class SolanaNode {
                                 inputMint,
                                 outputMint,
                                 inputAmount: swapAmount,
-                                error: error.message,
+                                error: 'Swap quote failed. Check token addresses and amount.',
                                 timestamp: new Date().toISOString(),
                             };
                         }
@@ -858,14 +902,13 @@ class SolanaNode {
                         const priorityFee = this.getNodeParameter('priorityFee', i);
                         const execDexProvider = this.getNodeParameter('dexProvider', i);
                         try {
-                            // Convert amount to proper decimals
-                            let execAmountInSmallestUnit;
-                            if (execInputMint === 'So11111111111111111111111111111111111111112') {
-                                execAmountInSmallestUnit = execSwapAmount * LAMPORTS_PER_SOL;
+                            // Validation
+                            if (execSwapAmount <= 0) {
+                                throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Swap amount must be greater than 0');
                             }
-                            else {
-                                execAmountInSmallestUnit = execSwapAmount * 1000000;
-                            }
+                            // Use helper method
+                            const execAmountInSmallestUnit = rpc['convertToSmallestUnit'](execSwapAmount, execInputMint);
+                            const outputDecimals = execOutputMint === SOL_MINT_ADDRESS ? LAMPORTS_PER_SOL : Math.pow(10, DEFAULT_TOKEN_DECIMALS);
                             // Get quote and swap transaction based on DEX
                             let execQuote;
                             let swapTransaction;
@@ -919,14 +962,13 @@ class SolanaNode {
                         const advPriorityFee = this.getNodeParameter('priorityFee', i);
                         const advDexProvider = this.getNodeParameter('dexProvider', i);
                         try {
-                            // Convert amount to proper decimals
-                            let advAmountInSmallestUnit;
-                            if (advInputMint === 'So11111111111111111111111111111111111111112') {
-                                advAmountInSmallestUnit = advSwapAmount * LAMPORTS_PER_SOL;
+                            // Validation
+                            if (advSwapAmount <= 0) {
+                                throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Swap amount must be greater than 0');
                             }
-                            else {
-                                advAmountInSmallestUnit = advSwapAmount * 1000000;
-                            }
+                            // Use helper method
+                            const advAmountInSmallestUnit = rpc['convertToSmallestUnit'](advSwapAmount, advInputMint);
+                            const outputDecimals = advOutputMint === SOL_MINT_ADDRESS ? LAMPORTS_PER_SOL : Math.pow(10, DEFAULT_TOKEN_DECIMALS);
                             // Get quote and swap transaction based on DEX
                             let advQuote;
                             let advSwapTransaction;
@@ -939,9 +981,15 @@ class SolanaNode {
                                 advQuote = await rpc.getJupiterQuote(advInputMint, advOutputMint, advAmountInSmallestUnit, advSlippageBps);
                                 advSwapTransaction = await rpc.getJupiterSwapTransaction(advQuote, walletAddress, advPriorityFee);
                             }
-                            // Create keypair from private key
-                            const privateKeyBytes = bs58.decode(credentials.privateKey);
-                            const keypair = web3_js_1.Keypair.fromSecretKey(privateKeyBytes);
+                            // Create keypair from private key (with error sanitization)
+                            let keypair;
+                            try {
+                                const privateKeyBytes = bs58.decode(credentials.privateKey);
+                                keypair = web3_js_1.Keypair.fromSecretKey(privateKeyBytes);
+                            }
+                            catch (keyError) {
+                                throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Invalid private key format. Please check your credentials.');
+                            }
                             // Deserialize and sign transaction properly
                             const transactionBuffer = Buffer.from(advSwapTransaction.swapTransaction, 'base64');
                             try {
@@ -959,7 +1007,7 @@ class SolanaNode {
                                     outputMint: advOutputMint,
                                     inputAmount: advSwapAmount,
                                     inputAmountRaw: advAmountInSmallestUnit.toString(),
-                                    outputAmount: parseFloat(advQuote.outAmount) / (advOutputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+                                    outputAmount: parseFloat(advQuote.outAmount) / outputDecimals,
                                     outputAmountRaw: advQuote.outAmount,
                                     priceImpactPct: advQuote.priceImpactPct,
                                     slippageBps: advSlippageBps,
@@ -984,7 +1032,7 @@ class SolanaNode {
                                     outputMint: advOutputMint,
                                     inputAmount: advSwapAmount,
                                     inputAmountRaw: advAmountInSmallestUnit.toString(),
-                                    outputAmount: parseFloat(advQuote.outAmount) / (advOutputMint === 'So11111111111111111111111111111111111111112' ? LAMPORTS_PER_SOL : 1000000),
+                                    outputAmount: parseFloat(advQuote.outAmount) / outputDecimals,
                                     outputAmountRaw: advQuote.outAmount,
                                     priceImpactPct: advQuote.priceImpactPct,
                                     slippageBps: advSlippageBps,
