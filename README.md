@@ -16,35 +16,19 @@
 
 ---
 
-## ⚠️ SECURITY WARNING / AVERTISSEMENT DE SÉCURITÉ
+## 🔐 Smart Wallet Setup
 
-### 🇬🇧 English
+### 💡 Quick Start
 
-**NEVER use your main wallet with n8n automation!**
+Like any automation tool that trades on your behalf, this node needs signing permissions. **We recommend the industry standard practice**: 
 
-This node requires your **private key** to sign transactions. For your security:
+✅ **Use a dedicated trading wallet** (like professionals do)  
+✅ **Fund it with only what you need** for your automation  
+✅ **Test on devnet first** (free test tokens - zero risk!)  
 
-- ✅ **Create a DEDICATED wallet** for n8n automation only
-- ✅ **Transfer only the amount** you need for trading/swaps
-- ✅ **Never store large amounts** in your automation wallet
-- ✅ **Test on devnet first** before using real funds
-- ✅ **Monitor regularly** and withdraw profits to your secure wallet
+💰 **Pro tip**: Keep your main wallet secure and use a separate "hot wallet" for automation - just like traders do on exchanges!
 
-💡 **Best Practice**: Treat your automation wallet like a "hot wallet" with limited funds, not your main cold storage.
-
-### 🇫🇷 Français
-
-**N'utilisez JAMAIS votre wallet principal avec l'automation n8n !**
-
-Ce node nécessite votre **clé privée** pour signer les transactions. Pour votre sécurité :
-
-- ✅ **Créez un wallet DÉDIÉ** uniquement pour l'automation n8n
-- ✅ **Transférez uniquement le montant** nécessaire pour vos trades/swaps
-- ✅ **Ne stockez jamais de gros montants** dans votre wallet d'automation
-- ✅ **Testez sur devnet d'abord** avant d'utiliser de vrais fonds
-- ✅ **Surveillez régulièrement** et retirez les profits vers votre wallet sécurisé
-
-💡 **Bonne pratique** : Traitez votre wallet d'automation comme un "hot wallet" avec des fonds limités, pas comme votre stockage froid principal.
+🎯 **Ready to go?** Check our [detailed security guide](#-security-best-practices--bonnes-pratiques-de-sécurité) below for best practices.
 
 ---
 
