@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-solana-swap",
-  "version": "1.5.0",
-  "description": "n8n node for Solana blockchain operations with Raydium and Jupiter swap integration. Developed by CHECKHC.",
+  "version": "1.6.0",
+  "description": "n8n node for Solana blockchain operations with Raydium and Jupiter swap integration. SPL token transfers now fully implemented with @solana/spl-token. Developed by CHECKHC.",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -48,9 +48,14 @@
     ]
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.87.6",
     "axios": "^1.6.0",
     "bs58": "^5.0.0",
     "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "gulp": "^5.0.1",
+    "n8n-workflow": "^1.112.0"
   }
 }

@@ -1200,41 +1200,28 @@ export class SolanaNode implements INodeType {
 								throw new Error(`Unsupported token type: ${tokenType}`);
 							}
 
-							let transferTransaction: any;
-							
-							if (tokenType === 'SOL') {
-								// SOL transfer
-								const lamports = sendAmount * LAMPORTS_PER_SOL;
-								transferTransaction = await rpc.createSolTransferTransaction(
-									walletAddress,
-									recipientAddress,
-									lamports,
-									sendPriorityFee
-								);
-							} else {
-								// SPL token transfer
-								transferTransaction = await rpc.createSplTransferTransaction(
-									walletAddress,
-									recipientAddress,
-									tokenMint,
-									sendAmount,
-									decimals,
-									sendPriorityFee
-								);
-							}
-
 							// Create keypair from private key
 							const privateKeyBytes = bs58.decode(credentials.privateKey as string);
 							const keypair = Keypair.fromSecretKey(privateKeyBytes);
 
 							// Use @solana/web3.js for transaction building
-							const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = await import('@solana/web3.js');
+							const { Transaction, SystemProgram, PublicKey, Connection } = await import('@solana/web3.js');
+							const { 
+								createAssociatedTokenAccountInstruction, 
+								createTransferInstruction,
+								getAssociatedTokenAddress,
+								getAccount,
+								TOKEN_PROGRAM_ID
+							} = await import('@solana/spl-token');
 							
-							let transaction: Transaction;
+							// Create connection for SPL token operations
+							const connection = new Connection(rpc.rpcUrl, 'confirmed');
+							
+							let transaction: Transaction = new Transaction();
 							
 							if (tokenType === 'SOL') {
 								// Create SOL transfer transaction
-								transaction = new Transaction().add(
+								transaction.add(
 									SystemProgram.transfer({
 										fromPubkey: new PublicKey(walletAddress),
 										toPubkey: new PublicKey(recipientAddress),
@@ -1242,10 +1229,42 @@ export class SolanaNode implements INodeType {
 									})
 								);
 							} else {
-								// For SPL tokens, we'll use a simplified approach
-								// In a production environment, you'd want to use @solana/spl-token
-								// For now, we'll return an error asking users to use SOL transfers
-								throw new Error(`SPL token transfers (${tokenType}) are not yet implemented. Please use SOL transfers for now, or use the swap functionality to convert to SOL first.`);
+								// SPL token transfer using @solana/spl-token
+								const mintPubkey = new PublicKey(tokenMint);
+								const fromPubkey = new PublicKey(walletAddress);
+								const toPubkey = new PublicKey(recipientAddress);
+								
+								// Get associated token accounts
+								const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, fromPubkey);
+								const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, toPubkey);
+								
+								// Check if destination token account exists
+								try {
+									await getAccount(connection, toTokenAccount);
+								} catch (error) {
+									// If account doesn't exist, create it
+									transaction.add(
+										createAssociatedTokenAccountInstruction(
+											fromPubkey,
+											toTokenAccount,
+											toPubkey,
+											mintPubkey
+										)
+									);
+								}
+								
+								// Add transfer instruction
+								const amount = Math.floor(sendAmount * Math.pow(10, decimals));
+								transaction.add(
+									createTransferInstruction(
+										fromTokenAccount,
+										toTokenAccount,
+										fromPubkey,
+										amount,
+										[],
+										TOKEN_PROGRAM_ID
+									)
+								);
 							}
 
 							// Set recent blockhash

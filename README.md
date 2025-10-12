@@ -61,6 +61,40 @@ Like any automation tool that trades on your behalf, this node needs signing per
 - ✅ **Input Validation** - Safe amount and address checks
 - 🔄 **Auto Retry** - Exponential backoff for failed requests
 
+### 💸 Token Transfers (New in v1.6.0)
+- ✅ **SPL Token Transfers** - Send CHECKHC, USDC, USDT, and any SPL token
+- 🔄 **Auto Account Creation** - Automatically creates associated token accounts if needed
+- 🚀 **Production Ready** - Full implementation with @solana/spl-token
+- 🌐 **Universal RPC Support** - Works with Helius, QuickNode, Alchemy, and public RPCs
+
+## 📝 Changelog
+
+### v1.6.0 (2025-10-12)
+**🎉 Major Update: SPL Token Transfers**
+
+- ✅ **NEW: `sendToken` operation** - Full SPL token transfer support
+  - Send SOL, CHECKHC, USDC, USDT, or any custom SPL token
+  - Automatic associated token account creation for recipients
+  - Configurable priority fees for faster transactions
+  
+- 🔧 **Technical improvements:**
+  - Implemented with official `@solana/spl-token` library
+  - Compatible with all RPC providers (Helius, QuickNode, Alchemy)
+  - Fixed Helius RPC encoding error (-32602)
+  - Proper decimal handling for different token types
+
+- 📦 **Developer experience:**
+  - Better error messages for failed transfers
+  - Automatic retry logic for network issues
+  - Transaction signature returned for on-chain verification
+
+**Migration:** No breaking changes. Existing workflows continue to work.
+
+### v1.5.0
+- Dual DEX support (Raydium + Jupiter)
+- Performance optimizations
+- Security improvements
+
 ## Installation
 
 ### Via n8n Community Nodes (Recommended)

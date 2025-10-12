@@ -15,13 +15,23 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -952,7 +962,7 @@ class SolanaNode {
                             }
                             result = {
                                 dex: execDexProvider,
-                                swapTransaction: swapTransaction.swapTransaction,
+                                swapTransaction: swapTransaction.swapTransaction, // Base64 encoded transaction
                                 inputMint: execInputMint,
                                 outputMint: execOutputMint,
                                 inputAmount: execSwapAmount,
@@ -1112,35 +1122,42 @@ class SolanaNode {
                             else {
                                 throw new Error(`Unsupported token type: ${tokenType}`);
                             }
-                            let transferTransaction;
-                            if (tokenType === 'SOL') {
-                                // SOL transfer
-                                const lamports = sendAmount * LAMPORTS_PER_SOL;
-                                transferTransaction = await rpc.createSolTransferTransaction(walletAddress, recipientAddress, lamports, sendPriorityFee);
-                            }
-                            else {
-                                // SPL token transfer
-                                transferTransaction = await rpc.createSplTransferTransaction(walletAddress, recipientAddress, tokenMint, sendAmount, decimals, sendPriorityFee);
-                            }
                             // Create keypair from private key
                             const privateKeyBytes = bs58.decode(credentials.privateKey);
                             const keypair = web3_js_1.Keypair.fromSecretKey(privateKeyBytes);
                             // Use @solana/web3.js for transaction building
-                            const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = await Promise.resolve().then(() => __importStar(require('@solana/web3.js')));
-                            let transaction;
+                            const { Transaction, SystemProgram, PublicKey, Connection } = await Promise.resolve().then(() => __importStar(require('@solana/web3.js')));
+                            const { createAssociatedTokenAccountInstruction, createTransferInstruction, getAssociatedTokenAddress, getAccount, TOKEN_PROGRAM_ID } = await Promise.resolve().then(() => __importStar(require('@solana/spl-token')));
+                            // Create connection for SPL token operations
+                            const connection = new Connection(rpc.rpcUrl, 'confirmed');
+                            let transaction = new Transaction();
                             if (tokenType === 'SOL') {
                                 // Create SOL transfer transaction
-                                transaction = new Transaction().add(SystemProgram.transfer({
+                                transaction.add(SystemProgram.transfer({
                                     fromPubkey: new PublicKey(walletAddress),
                                     toPubkey: new PublicKey(recipientAddress),
                                     lamports: sendAmount * LAMPORTS_PER_SOL,
                                 }));
                             }
                             else {
-                                // For SPL tokens, we'll use a simplified approach
-                                // In a production environment, you'd want to use @solana/spl-token
-                                // For now, we'll return an error asking users to use SOL transfers
-                                throw new Error(`SPL token transfers (${tokenType}) are not yet implemented. Please use SOL transfers for now, or use the swap functionality to convert to SOL first.`);
+                                // SPL token transfer using @solana/spl-token
+                                const mintPubkey = new PublicKey(tokenMint);
+                                const fromPubkey = new PublicKey(walletAddress);
+                                const toPubkey = new PublicKey(recipientAddress);
+                                // Get associated token accounts
+                                const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, fromPubkey);
+                                const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, toPubkey);
+                                // Check if destination token account exists
+                                try {
+                                    await getAccount(connection, toTokenAccount);
+                                }
+                                catch (error) {
+                                    // If account doesn't exist, create it
+                                    transaction.add(createAssociatedTokenAccountInstruction(fromPubkey, toTokenAccount, toPubkey, mintPubkey));
+                                }
+                                // Add transfer instruction
+                                const amount = Math.floor(sendAmount * Math.pow(10, decimals));
+                                transaction.add(createTransferInstruction(fromTokenAccount, toTokenAccount, fromPubkey, amount, [], TOKEN_PROGRAM_ID));
                             }
                             // Set recent blockhash
                             const blockhashResult = await rpc.call('getLatestBlockhash');
